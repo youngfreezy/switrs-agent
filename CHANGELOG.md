@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Use the selected snapshot's coverage in answerability checks, refusals, context, and answer footers. Updated snapshots can answer newly available years. Static catalog statistics are no longer presented as measurements of the active snapshot.
 - Reject invalid source numeric domains before conversion and reconciliation; fractional or non-binary motorcycle flags can no longer be rounded into positive observations.
 - Compare complete source and analytical records by key, rejecting changed associations, missing/duplicate keys, and altered values even when marginal totals match.
 - Verify the analytical file's SHA-256 before serving answers, including when a replacement preserves file size and modification time. Certificates include the analytical digest. Run reconciliation again to upgrade older manifests.

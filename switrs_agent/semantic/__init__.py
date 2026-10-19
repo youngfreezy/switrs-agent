@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import pathlib
+import copy
 from functools import lru_cache
 
 import yaml
+
+from ..coverage import statement as coverage_statement
 
 HERE = pathlib.Path(__file__).resolve().parent
 MAX_LISTED_VALUES = 40
@@ -20,13 +23,17 @@ def load() -> tuple[dict, dict]:
     return schema, catalog
 
 
-def describe_column(table: str, column: str) -> str:
+def describe_column(table: str, column: str, statistics: bool = True) -> str:
     schema, catalog = load()
     meta = catalog.get(table, {}).get("columns", {}).get(column, {})
     note = schema.get("columns", {}).get(table, {}).get(column)
     parts = [f"{column} {meta.get('type', '?')}"]
     if note:
         parts.append(f"-- {note}")
+    if not statistics:
+        if 'values' in meta:
+            parts.append('catalog categories: ' + ', '.join(repr(v) for v in list(meta['values'])[:MAX_LISTED_VALUES]))
+        return ' '.join(parts)
     if meta:
         parts.append(f"[null {meta['null_pct']}%]")
         if "values" in meta:
@@ -41,10 +48,15 @@ def describe_column(table: str, column: str) -> str:
     return " ".join(parts)
 
 
-def render_context() -> str:
+def render_context(dataset: dict | None = None) -> str:
     """Full grounding context: tables, joins, every column with meaning and real values, metrics,
     caveats, and what the data does not contain. Deterministic so it caches well."""
     schema, catalog = load()
+    if dataset is not None:
+        schema = copy.deepcopy(schema)
+        schema['dataset']['coverage'] = coverage_statement(dataset)
+        schema['caveats']['coverage_window']['text'] = coverage_statement(dataset)
+        schema['not_in_data'][-1] = {'concept': 'dates outside this snapshot', 'note': coverage_statement(dataset)}
     ds = schema["dataset"]
     lines = [
         f"# Dataset: {ds['name']}",
@@ -54,7 +66,7 @@ def render_context() -> str:
         "## Tables and joins",
     ]
     for name, t in schema["tables"].items():
-        rows = catalog.get(name, {}).get("rows")
+        rows = dataset.get('rows', {}).get(name) if dataset is not None else catalog.get(name, {}).get('rows')
         lines.append(f"- {name}" + (f" ({rows:,} rows)" if rows else "") + f": {t['description'].strip()}")
     lines += ["Joins:"] + [f"- {j}" for j in schema["joins"]]
     lines += ["", "## Columns (type, meaning, null share, real values)"]
@@ -62,7 +74,7 @@ def render_context() -> str:
         lines.append(f"### {table}")
         cols = catalog.get(table, {}).get("columns") or schema.get("columns", {}).get(table, {})
         for column in cols:
-            lines.append("- " + describe_column(table, column))
+            lines.append("- " + describe_column(table, column, statistics=dataset is None))
     lines += ["", "## Named metrics (use these definitions)"]
     for name, m in schema["metrics"].items():
         lines.append(f"- {name}: {m['sql']}" + (f"  -- {m['note']}" if m.get("note") else ""))

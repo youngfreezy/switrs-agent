@@ -120,7 +120,7 @@ caveats:
     text: "The data covers 2001-01-01 to 2021-06-03."
   partial_recent_months:
     trigger: "dates in 2021, or yearly totals that include 2021"
-    text: "2021 is partial (data ends 2021-06-03, May 2021 is incomplete). Recent months also undercount because reports arrive late."
+    text: "Recent months in a snapshot may be incomplete because reports arrive late. Date bounds describe observed records, not reporting completeness."
   reported_only:
     trigger: always
     text: "Only crashes reported to police are in the data."

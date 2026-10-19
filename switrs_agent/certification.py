@@ -14,6 +14,7 @@ from decimal import Decimal
 
 from . import answerability, semantic
 from .metric_recipes import QUESTIONS, RECIPES
+from .coverage import bounds as coverage_bounds
 
 VERSION = 'certified-metrics-v1'
 
@@ -119,8 +120,8 @@ class Builder:
                     interpretation=interpretation, metric_version=VERSION)
 
 
-def refusal(question: str) -> dict:
-    hits = answerability.classify(question)
+def refusal(question: str, dataset: dict) -> dict:
+    hits = answerability.classify(question, dataset)
     gaps = list(dict.fromkeys(h.gap for h in hits if h.gap))
     if any(h.kind == 'causal' for h in hits):
         gaps.append('These observational crash records cannot prove causal effects or test police bias. '
@@ -139,14 +140,10 @@ def refusal(question: str) -> dict:
 
 def period_check(toolkit, first: date, last: date) -> dict | None:
     """A requested whole period must fit the reconciled snapshot, not prompt text."""
-    coverage = toolkit.dataset.get('coverage') or {}
     try:
-        start = date.fromisoformat(coverage['min_collision_date'])
-        end = date.fromisoformat(coverage['max_collision_date'])
-    except (KeyError, TypeError, ValueError) as exc:
-        raise CertificationError('Valid reconciled coverage metadata is required for calendar-period answers.') from exc
-    if start > end:
-        raise CertificationError('The reconciled coverage bounds are invalid.')
+        start, end = coverage_bounds(toolkit.dataset.get('coverage'))
+    except ValueError as exc:
+        raise CertificationError(str(exc)) from exc
     if first < start or last > end:
         return dict(answer=f'The requested whole period is not available. This snapshot covers {start} to {end}; '
                            'a partial-period count cannot stand in for the requested full period.',
@@ -165,8 +162,8 @@ def prepare(toolkit, turn_id: str) -> dict:
         return RECIPES[recipe](Builder(toolkit, turn_id))
     request = parse(question)
     # Unsupported modifiers cannot be silently dropped, including unavailable dates.
-    if request is None or answerability.classify(question):
-        return refusal(question)
+    if request is None or answerability.classify(question, toolkit.dataset):
+        return refusal(question, toolkit.dataset)
     if request.year:
         unavailable = period_check(toolkit, date(request.year, 1, 1), date(request.year, 12, 31))
         if unavailable:

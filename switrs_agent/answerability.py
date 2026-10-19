@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import calendar
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 
 from .semantic import load
+from .coverage import bounds as coverage_bounds, statement as coverage_statement
 
 STATUSES = ("answerable", "ambiguous", "descriptive_only", "partially_available", "unavailable")
 
@@ -63,10 +64,16 @@ _DATE_PATTERNS = [
 ]
 
 
-def _coverage_rule(question: str) -> Rule | None:
-    schema, _ = load()
-    bounds = re.findall(r"\d{4}-\d{2}-\d{2}", schema["dataset"]["coverage"])
-    start, end = map(date.fromisoformat, bounds)
+def _coverage_rule(question: str, dataset: dict | None = None) -> Rule | None:
+    if dataset is None:  # Standalone diagnostics retain the default catalog scope.
+        schema, _ = load()
+        dates = re.findall(r"\d{4}-\d{2}-\d{2}", schema["dataset"]["coverage"])
+        start, end = map(date.fromisoformat, dates)
+    else:
+        try:
+            start, end = coverage_bounds(dataset.get('coverage'))
+        except ValueError:
+            start = end = None  # The compiler rejects invalid metadata before querying a period.
     # Model year is an available vehicle attribute, not a collision date.
     text = re.sub(r"\bmodel\s+years?\s+(?:of\s+)?\d{4}\b|\b\d{4}\s+model[- ]years?\b",
                   " ", question, flags=re.IGNORECASE)
@@ -93,26 +100,29 @@ def _coverage_rule(question: str) -> Rule | None:
             except ValueError:
                 return Rule("invalid_date", _r(r"(?!)"), "out_of_scope",
                             "The requested calendar date is invalid; clarify the date.", "coverage_window")
-            if lower < start or upper > end:
+            if start is not None and (lower < start or upper > end):
                 return Rule("outside_coverage", _r(r"(?!)"), "out_of_scope",
                             f"The data covers {start} to {end}; the requested period is not fully available.",
                             "coverage_window")
     return None
 
 
-def classify(question: str) -> list[Rule]:
+def classify(question: str, dataset: dict | None = None) -> list[Rule]:
     hits = [r for r in RULES if r.pattern.search(question)]
-    coverage = _coverage_rule(question)
+    if dataset is not None:
+        hits = [replace(r, gap=coverage_statement(dataset) + ' Specify an explicit calendar period.')
+                if r.id == 'after_coverage' else r for r in hits]
+    coverage = _coverage_rule(question, dataset)
     if coverage:
         hits.append(coverage)
     return hits
 
 
-def check_status(question: str, status: str) -> dict:
+def check_status(question: str, status: str, dataset: dict | None = None) -> dict:
     """Return detections, the gaps and caveats they require, and an error if the declared status
     contradicts them."""
     status = (status or "").strip().lower()
-    hits = classify(question)
+    hits = classify(question, dataset)
     out = {
         "detected": [h.id for h in hits],
         "gaps": [h.gap for h in hits if h.gap],

@@ -156,7 +156,7 @@ def test_end_of_day_time_cannot_be_certified_as_hour_24(rich_kit):
 ])
 def test_dataset_manifest_must_cover_whole_requested_period(rich_kit, question, lower, upper):
     rich_kit.dataset["coverage"] = {"min_collision_date": lower, "max_collision_date": upper}
-    turn = begin(rich_kit, question)
+    turn = begin(rich_kit, question, "partially_available")
     p = rich_kit.prepare_answer(turn)
     assert "error" in p or (not p["claims"] and p["status"] == "unsupported"), p
 

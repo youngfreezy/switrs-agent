@@ -15,11 +15,11 @@ import re
 import secrets
 import time
 from dataclasses import asdict
-from datetime import date
 
 from . import answerability, certification, claims, grounding, guard, semantic
 from .db import Database
 from .dataset_integrity import INTEGRITY_VERSION, sha256
+from .coverage import statement as coverage_statement
 from .request_binding import new_request, read_request, same_question
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -105,7 +105,7 @@ class Toolkit:
     def get_context(self) -> str:
         """The grounding context: tables, joins, columns with real values, metrics, caveats,
         and concepts the data does not contain."""
-        return semantic.render_context()
+        return semantic.render_context(self.dataset)
 
     def describe_table(self, table: str) -> dict:
         table = table.lower()
@@ -113,7 +113,7 @@ class Toolkit:
             return {"error": f"Unknown table '{table}'. Tables: {', '.join(sorted(self.schema_cols))}."}
         return {
             "table": table,
-            "columns": [semantic.describe_column(table, c) for c in self.schema_cols[table]],
+            "columns": [semantic.describe_column(table, c, statistics=False) for c in self.schema_cols[table]],
         }
 
     def distinct_values(self, table: str, column: str, contains: str | None = None, limit: int = 50) -> dict:
@@ -149,7 +149,7 @@ class Toolkit:
             self._log("begin_question", {"question": question, "answerability": answerability,
                                          "interpretation": interpretation}, result)
             return result
-        check = _answerability_check(question, answerability)
+        check = _answerability_check(question, answerability, self.dataset)
         if check["error"]:
             result = {"error": check["error"], "detected": check["detected"], "gaps": check["gaps"]}
             self._log("begin_question", {"question": question, "answerability": answerability,
@@ -307,13 +307,7 @@ class Toolkit:
                                         + [c for q in turn["queries"] for c in self.queries[q]["caveats"]]))
         if QUESTION_CUES.search(turn["question"]) and "observational" not in caveat_ids:
             caveat_ids.append("observational")
-        coverage = self.dataset.get('coverage') or {}
-        try:
-            start = date.fromisoformat(coverage['min_collision_date'])
-            end = date.fromisoformat(coverage['max_collision_date'])
-            coverage_line = f'- This reconciled snapshot covers collision dates {start} to {end}.'
-        except (KeyError, TypeError, ValueError):
-            coverage_line = '- Snapshot date coverage metadata is unavailable.'
+        coverage_line = '- ' + coverage_statement(self.dataset)
         caveat_lines = [coverage_line if cid == 'coverage_window' else f"- {schema['caveats'][cid]['text']}"
                         for cid in caveat_ids if cid in schema['caveats']]
         gap_lines = [f"- {g}" for g in turn["gaps"]]
@@ -355,8 +349,8 @@ class Toolkit:
         return result
 
 
-def _answerability_check(question: str, status: str) -> dict:
-    return answerability.check_status(question, status)
+def _answerability_check(question: str, status: str, dataset: dict | None = None) -> dict:
+    return answerability.check_status(question, status, dataset)
 
 
 def _render_html(question, answer, queries, trace=(), dataset=None) -> str:
