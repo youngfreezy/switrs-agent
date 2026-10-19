@@ -4,8 +4,9 @@ from datetime import date, time
 from decimal import Decimal
 from itertools import zip_longest
 
+# Victim IDs repeat across collisions in the source snapshot; identity is case-local.
 KEYS = {'collisions': ('case_id',), 'parties': ('case_id', 'party_number'),
-        'victims': ('id',), 'case_ids': ('case_id',)}
+        'victims': ('case_id', 'id'), 'case_ids': ('case_id',)}
 INTEGRITY_VERSION = 2
 BINARY_COLUMNS = {'motorcycle_collision', 'bicycle_collision', 'pedestrian_collision',
                   'truck_collision', 'alcohol_involved', 'at_fault', 'cellphone_in_use'}

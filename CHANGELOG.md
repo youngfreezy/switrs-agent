@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Use `(case_id, id)` for victim identity; the real snapshot legitimately repeats victim IDs across collisions. Duplicate identities within a collision still fail reconciliation.
+
 - Verify an explicitly supplied database connection's file against the manifest rather than validating a different file selected by the environment.
 - Reject incomplete motorcycle eligibility and orphaned case bookkeeping records found during the follow-up adversarial pass.
 - Block complete fatal-crash measurements when the requested population has unknown severity. Counts, hour rankings, and period comparisons disclose conflicts with fatality counts and explicitly measure records coded fatal. Other valid counts remain answerable.

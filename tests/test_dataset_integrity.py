@@ -165,3 +165,20 @@ def test_valid_normalization_and_exact_counts_survive_full_pipeline(snapshot, mo
         assert r['certified'] and f'{expected:,}' in r['final_answer']
     finally:
         toolkit.db.con.close()
+
+
+def test_victim_ids_can_repeat_in_different_collision_records(snapshot, monkeypatch):
+    source, target, meta = snapshot('case-local-victim-id',
+        source_sql="UPDATE victims SET id=1 WHERE case_id='B';")
+    result = reconcile_pair(monkeypatch, source, target, meta)
+    assert result['status'] == 'ok'
+    assert result['record_comparison']['victims']['compared'] == 3
+    toolkit = tools.Toolkit()
+    try:
+        toolkit.bind_question('How many people were killed?')
+        turn = toolkit.begin_question('How many people were killed?', 'answerable', 'Original request.')['turn_id']
+        p = toolkit.prepare_answer(turn)
+        assert p['claims'][0]['computed'] == 3
+        assert toolkit.submit_answer(turn, p['answer'], p['claims'])['certified']
+    finally:
+        toolkit.db.con.close()
