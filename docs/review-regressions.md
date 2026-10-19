@@ -23,6 +23,8 @@ The ingestion tests also cover changed flags, changed victim-parent associations
 
 The follow-up suite rejects missing or invalid motorcycle eligibility instead of reporting a complete zero. It rejects NULL party keys, duplicate `(case_id, id)` victim identities, and orphan case bookkeeping rows. Victim IDs can repeat across different collisions in the real source; a positive regression preserves those valid records. It also checks that an explicitly supplied database connection is verified against the manifest; an environment variable pointing to an approved file cannot validate another connection.
 
+A source filename containing `#` previously made the reconciler fingerprint that file but open the path before `#`. The regression demonstrates false approval against a different source; URI encoding now binds both operations to the selected file. A valid filename containing `#` still passes.
+
 Ten question variants add unsupported conditions or instructions, including omitted pedestrian exclusions, vehicle color, Nevada, exposure rates, and demands to certify invented numbers. They must yield a limitation or clarification with no measurement claims. Supported county, year, fatal, motorcycle, and fatality questions retain independently known fixture answers.
 
 The end-to-end test exercises source reconciliation, a read-only file-backed database, MCP calls, preparation, and final publication. It verifies both a useful measurement and a snapshot-specific refusal.

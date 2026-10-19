@@ -77,11 +77,11 @@ def main() -> None:
     ap.add_argument("--duckdb", default=str(ROOT / "data" / "switrs.duckdb"))
     ap.add_argument("--out", default=str(ROOT / "data" / "dataset_meta.json"))
     args = ap.parse_args()
-    src_path = pathlib.Path(args.sqlite).expanduser()
+    src_path = pathlib.Path(args.sqlite).expanduser().resolve()
 
     print("fingerprinting source ...", flush=True)
     src_hash = sha256(src_path)
-    src = sqlite3.connect(f"file:{src_path}?immutable=1", uri=True)
+    src = sqlite3.connect(src_path.as_uri() + "?immutable=1", uri=True)
     dst = duckdb.connect(args.duckdb, read_only=True)
     print("validating source numeric domains ...", flush=True)
     source_problems = validate_source(src)

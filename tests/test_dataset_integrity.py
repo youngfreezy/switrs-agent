@@ -182,3 +182,15 @@ def test_victim_ids_can_repeat_in_different_collision_records(snapshot, monkeypa
         assert toolkit.submit_answer(turn, p['answer'], p['claims'])['certified']
     finally:
         toolkit.db.con.close()
+
+
+@pytest.mark.parametrize('mutate,expected', [(False, 'ok'), (True, 'failed')])
+def test_source_uri_cannot_substitute_a_different_file(snapshot, monkeypatch, mutate, expected):
+    source, target, meta = snapshot('source-uri')
+    named_source = source.with_name(source.name + '#selected-snapshot')
+    shutil.copyfile(source, named_source)
+    if mutate:
+        with sqlite3.connect(named_source) as db:
+            db.execute('UPDATE collisions SET killed_victims=0')
+    result = reconcile_pair(monkeypatch, named_source, target, meta)
+    assert result['status'] == expected

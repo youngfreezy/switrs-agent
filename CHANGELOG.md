@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Encode the SQLite source URI so reserved filename characters cannot make reconciliation hash one source but compare another.
+
 - Use `(case_id, id)` for victim identity; the real snapshot legitimately repeats victim IDs across collisions. Duplicate identities within a collision still fail reconciliation.
 
 - Verify an explicitly supplied database connection's file against the manifest rather than validating a different file selected by the environment.
