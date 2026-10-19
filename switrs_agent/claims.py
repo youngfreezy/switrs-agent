@@ -130,7 +130,7 @@ def _masked_numbers(text: str) -> str:
 
 
 def _numbers(text: str):
-    return extract_numbers(_masked_numbers(text))
+    return extract_numbers(_masked_numbers(_norm(text)))
 
 
 def check_claim(claim: dict, queries: dict, turn_id: str, sentence: str = "") -> tuple[float | None, list[str]]:
@@ -155,6 +155,13 @@ def check_claim(claim: dict, queries: dict, turn_id: str, sentence: str = "") ->
     # A numeric-only claim span still asserts the direction in its enclosing clause.
     context = sentence or text
     up, down = bool(UP.search(context)), bool(DOWN.search(context))
+    if op in ("ratio", "percent_of") and (up or down):
+        errs.append("Use 'as many' or 'of' for ratios/shares; use difference or percent_change for more/fewer claims.")
+    if op in ("percent_change", "difference"):
+        if up and down:
+            errs.append("The comparison contains conflicting increase and decrease wording. Use one direction.")
+        elif (value > 0 and down) or (value < 0 and up):
+            errs.append(f"claim {text[:60]!r}: computed change {value:.4g} contradicts the stated direction")
     matched = False
     for c in shown:
         if not math.isfinite(value) or not math.isfinite(c.value) or not -300 <= c.decimals <= 300:
@@ -179,8 +186,6 @@ def check_claim(claim: dict, queries: dict, turn_id: str, sentence: str = "") ->
             break
     if not matched:
         errs.append(f"claim {text[:60]!r}: computed {value:.6g} from the cited cells; the text shows {', '.join(c.text for c in shown)}")
-    if value > 0 and op in ("percent_change", "difference") and down and not up:
-        errs.append(f"claim {text[:60]!r}: value is +{value:.4g} but the text describes a decrease")
     raw_entity = claim.get("entity")
     entities = [str(e).strip().lower() for e in raw_entity] if isinstance(raw_entity, list) else (
         [str(raw_entity).strip().lower()] if raw_entity else [])
@@ -212,6 +217,13 @@ def check_claim(claim: dict, queries: dict, turn_id: str, sentence: str = "") ->
 
 
 def _norm(s: str) -> str:
+    # Match claims and scan coverage in the same coordinate system. Strip paired inline
+    # emphasis, without separating a sign/exponent/magnitude from its number.
+    while True:
+        plain = re.sub(r"(?<!\\)(\*\*|__|\*|_|`)(?=\S)(.+?)(?<!\s)\1", r"\2", s)
+        if plain == s:
+            break
+        s = plain
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -221,6 +233,8 @@ def check_answer(answer: str, claims: list[dict], queries: dict, turn_id: str, q
     errors: list[str] = []
     checked = []
     norm_answer = _norm(answer)
+    if any(char.isnumeric() and not char.isdecimal() for char in norm_answer):
+        errors.append("Use decimal digits for numeric assertions; fraction and other numeric glyphs are not supported.")
     spans = []
     for claim in claims:
         malformed = _validate_claim(claim)

@@ -124,12 +124,12 @@ async def run_turn(agent, question: str, verbose: bool) -> dict:
         console.print(Markdown(texts[-1]))
     elapsed = time.time() - started
     if done.get("error"):
-        console.print(f"\n[red]error:[/red] {done['error']}")
+        console.print(f"\n[red]error:[/red] {escape(str(done['error']))}")
     foot = [f"backend {agent.name}", f"{done.get('turns', '?')} model turns", f"{elapsed:.0f}s"]
     if done.get("cost_usd") is not None:
         foot.append(f"${done['cost_usd']:.3f} est.")
     foot.append(f"trace outputs/traces/{done.get('session_id', agent.session_id)}.jsonl")
-    console.print("\n[dim]" + "  |  ".join(foot) + "[/dim]")
+    console.print("\n[dim]" + escape("  |  ".join(foot)) + "[/dim]")
     return done
 
 
@@ -146,9 +146,9 @@ def _print_query(inp: dict, result) -> None:
 def _print_rows(columns: list[str], rows: list[list], limit: int = 20) -> None:
     t = Table(show_edge=False, header_style="bold")
     for c in columns:
-        t.add_column(str(c))
+        t.add_column(Text(str(c)))
     for row in rows[:limit]:
-        t.add_row(*[f"{v:,}" if isinstance(v, int) else str(v) for v in row])
+        t.add_row(*[Text(f"{v:,}" if isinstance(v, int) else str(v)) for v in row])
     console.print(t)
     if len(rows) > limit:
         console.print(f"[dim]... {len(rows) - limit} more rows[/dim]")
@@ -163,7 +163,7 @@ def _agent(args):
 
 async def cmd_ask(args) -> int:
     agent = _agent(args)
-    console.print(f"[bold]> {args.question}[/bold]\n")
+    console.print(f"[bold]> {escape(args.question)}[/bold]\n")
     try:
         done = await run_turn(agent, args.question, args.verbose)
     finally:
@@ -198,20 +198,20 @@ def cmd_sql(args) -> int:
     if hasattr(kit, "begin_question"):  # the server requires an open turn before queries
         opened = kit.begin_question(args.purpose, "answerable", "ad hoc SQL from the switrs CLI")
         if "error" in opened:
-            console.print(f"[red]rejected:[/red] {opened['error']}")
+            console.print(f"[red]rejected:[/red] {escape(str(opened['error']))}")
             return 1
     res = kit.run_sql(args.sql, args.purpose, args.plan or "")
     if args.json:
         print(json.dumps(res, default=str, indent=2))
         return 1 if "error" in res else 0
     if "error" in res:
-        console.print(f"[red]rejected:[/red] {res['error']}")
+        console.print(f"[red]rejected:[/red] {escape(str(res['error']))}")
         if res.get("hint"):
-            console.print(f"[dim]{res['hint']}[/dim]")
+            console.print(f"[dim]{escape(str(res['hint']))}[/dim]")
         return 1
     console.print(f"[cyan]{res['query_id']}[/cyan]  {res['row_count']} rows  {res['elapsed_ms']} ms")
     for w in res.get("warnings", []):
-        console.print(f"[yellow]warning:[/yellow] {w}")
+        console.print(f"[yellow]warning:[/yellow] {escape(str(w))}")
     _print_rows(res["columns"], res["rows"])
     if res.get("caveats"):
         console.print("[dim]caveats: " + "; ".join(str(c) for c in res["caveats"]) + "[/dim]")

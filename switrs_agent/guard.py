@@ -183,7 +183,18 @@ def _analyze(tree: exp.Expression, schema: dict):
     from sqlglot.optimizer.scope import Scope, traverse_scope
 
     try:
-        qualified = qualify(tree.copy(), dialect="duckdb", schema=schema)
+        analyzed = tree.copy()
+        # DuckDB aliases arrive as Anonymous rather than AggFunc in SQLGlot. Normalize
+        # only the analysis tree so grain tracking and fan-out checks see their semantics.
+        aggregate_aliases = {"fsum": exp.Sum, "kahan_sum": exp.Sum, "sumkahan": exp.Sum,
+                             "favg": exp.Avg, "mean": exp.Avg}
+        for call in list(analyzed.find_all(exp.Anonymous)):
+            aggregate = aggregate_aliases.get(call.name.lower())
+            if aggregate:
+                if len(call.expressions) != 1:
+                    raise GuardError(f"{call.name} requires one aggregate argument.")
+                call.replace(aggregate(this=call.expressions[0]))
+        qualified = qualify(analyzed, dialect="duckdb", schema=schema)
         scopes = traverse_scope(qualified)
         relations: dict[int, _Relation] = {}
         sources_by_select: dict[int, dict[str, _Relation]] = {}
