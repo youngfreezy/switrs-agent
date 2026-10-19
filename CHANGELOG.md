@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Verify the analytical file's SHA-256 before serving answers, including when a replacement preserves file size and modification time. Certificates include the analytical digest. Run reconciliation again to upgrade older manifests.
+
 ## 0.2.0
 
 ### Changed

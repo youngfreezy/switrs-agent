@@ -19,6 +19,7 @@ from datetime import date
 
 from . import answerability, certification, claims, grounding, guard, semantic
 from .db import Database
+from .dataset_integrity import sha256
 from .request_binding import new_request, read_request, same_question
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -45,6 +46,8 @@ def load_dataset_meta() -> dict:
     st = db_path.stat()
     if recorded.get("bytes") != st.st_size or recorded.get("mtime_ns") != st.st_mtime_ns:
         raise RuntimeError(f"{db_path} changed after reconciliation. Run scripts/reconcile.py again.")
+    if not recorded.get("sha256") or recorded["sha256"] != sha256(db_path):
+        raise RuntimeError(f"{db_path} content digest is missing or changed. Run scripts/reconcile.py again.")
     return meta
 
 
@@ -329,7 +332,8 @@ class Toolkit:
                 "question": turn["question"], "turn_id": turn_id, "request_id": turn.get("request_id"),
                 "certified": True, "status": prepared["status"],
                 "interpretation": prepared["interpretation"], "metric_version": prepared["metric_version"],
-                "caveats": caveat_ids, "gaps": turn["gaps"], "dataset_version": self.dataset["dataset_version"]}
+                "caveats": caveat_ids, "gaps": turn["gaps"], "dataset_version": self.dataset["dataset_version"],
+                "analytical_sha256": self.dataset.get("duckdb_file", {}).get("sha256")}
 
     def render_answer(self, turn_id: str) -> dict:
         """Write the certified answer for a turn as a self-contained HTML page with its queries,

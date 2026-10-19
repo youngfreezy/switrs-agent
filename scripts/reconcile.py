@@ -9,7 +9,6 @@ usage: uv run python scripts/reconcile.py --sqlite ~/Desktop/switrs/switrs.sqlit
 """
 
 import argparse
-import hashlib
 import json
 import pathlib
 import sqlite3
@@ -17,6 +16,8 @@ import sys
 import time
 
 import duckdb
+
+from switrs_agent.dataset_integrity import sha256
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TRANSFORM_VERSION = "build_duckdb v1: TRY_CAST INT->BIGINT, REAL->DOUBLE, dates->DATE, time->TIME, ''->NULL"
@@ -55,15 +56,7 @@ def assess(columns_report: dict, keys: dict, aggregates: dict) -> list[str]:
 
 def duckdb_fingerprint(path: pathlib.Path) -> dict:
     st = path.stat()
-    return {"bytes": st.st_size, "mtime_ns": st.st_mtime_ns}
-
-
-def sha256(path: pathlib.Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for block in iter(lambda: f.read(8 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
+    return {"bytes": st.st_size, "mtime_ns": st.st_mtime_ns, "sha256": sha256(path)}
 
 
 def norm(rows):
