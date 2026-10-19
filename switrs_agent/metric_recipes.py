@@ -69,6 +69,8 @@ def drinking(b):
 
 
 def fatal_hour(b):
+    if blocked := fatal_classification(b):
+        return blocked
     # DuckDB accepts TIME '24:00:00'; it is not an hour in a 0..23 ranking.
     invalid = b.query("SELECT COUNT(*) AS n FROM collisions WHERE collision_severity='fatal' "
                       "AND HOUR(collision_time) NOT BETWEEN 0 AND 23", 'invalid_collision_hours')
@@ -87,7 +89,8 @@ def fatal_hour(b):
             break
         b.fact('A leading hour was {value} on the local-time 24-hour clock.', 'hour_of_day', q, 'hour', row=i)
         b.fact('That hour had {value} recorded fatal collisions.', 'fatal_collision_count', q, row=i)
-    b.parts.append('All tied leading hours are shown. Records with missing collision times are excluded.')
+    b.parts.append('Fatal collisions here means records coded fatal. All tied leading hours are shown. '
+                   'Records with missing collision times are excluded.')
     return b.finish(interpretation='Rank fatal-collision counts by recorded local hour, excluding missing times.')
 
 
@@ -124,6 +127,8 @@ def belts(b):
 
 
 def covid(b):
+    if blocked := fatal_classification(b, " WHERE collision_date BETWEEN DATE '2019-01-01' AND DATE '2020-12-31'"):
+        return blocked
     q = b.query("""SELECT
       COUNT(*) FILTER (WHERE YEAR(collision_date)=2019) AS n2019,
       COUNT(*) FILTER (WHERE YEAR(collision_date)=2020) AS n2020,
@@ -144,8 +149,31 @@ def covid(b):
         direction = 'increased' if comparison > 0 else 'decreased' if comparison < 0 else 'was unchanged'
         b.parts.append(f'The fatal share {direction} between those calendar years.')
     b.parts.append('This is a descriptive period comparison. It cannot establish how much COVID-19 caused the changes; '
-                   'the records do not provide traffic-exposure denominators.')
+                   'the records do not provide traffic-exposure denominators. Fatal collisions here means records coded fatal.')
     return b.finish(interpretation='Compare calendar 2019 and 2020 and their April counts; report each calendar year\'s fatal-collision share.')
 
 
 RECIPES = {name: globals()[name] for name in set(QUESTIONS.values())}
+
+
+def fatal_classification(b, where=''):
+    """Unknown classifications block the measure; known conflicting codes are disclosed.
+
+    A coded-fatal count is still reproducible when a known code disagrees with a
+    death count, but must not be presented as a resolved real-world fatal count.
+    """
+    q = b.query("""SELECT COUNT(*) FILTER (WHERE collision_severity IS NULL OR
+      collision_severity NOT IN ('fatal','severe injury','other injury','pain','property damage only')) AS unknown,
+      COUNT(*) FILTER (WHERE killed_victims IS NOT NULL AND
+        ((collision_severity='fatal') <> (killed_victims > 0))) AS conflicts
+      FROM collisions""" + where, 'fatal_classification_quality')
+    if b.count(q, 'unknown'):
+        b.fact('Severity is missing or unrecognized for {value} records in the requested population.',
+               'unknown_fatal_classification', q, 'unknown')
+        b.parts.append('The requested fatal-collision measure is unavailable. This is not evidence of zero fatal collisions.')
+        return b.finish('data_quality_blocked')
+    if b.count(q, 'conflicts'):
+        b.fact('{value} records have conflicting severity and fatality counts.',
+               'conflicting_fatal_classification', q, 'conflicts')
+        b.parts.append('The fatal-collision results below count records coded fatal; they do not resolve these conflicts.')
+    return None

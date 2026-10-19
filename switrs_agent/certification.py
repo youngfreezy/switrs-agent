@@ -13,7 +13,7 @@ from datetime import date
 from decimal import Decimal
 
 from . import answerability, semantic
-from .metric_recipes import QUESTIONS, RECIPES
+from .metric_recipes import QUESTIONS, RECIPES, fatal_classification
 from .coverage import bounds as coverage_bounds
 
 VERSION = 'certified-metrics-v1'
@@ -194,10 +194,13 @@ def prepare(toolkit, turn_id: str) -> dict:
     if request.year:
         filters.append(f'YEAR(collision_date) = {request.year}')
         scope += f' in {request.year}'
-    if request.fatal:
-        filters.append("collision_severity = 'fatal'")
     if request.motorcycle:
         filters.append('motorcycle_collision = 1')
+    if request.fatal:
+        scope_where = ' WHERE ' + ' AND '.join(filters) if filters else ''
+        if blocked := fatal_classification(b, scope_where):
+            return blocked
+        filters.append("collision_severity = 'fatal'")
     where = ' WHERE ' + ' AND '.join(filters) if filters else ''
     if request.metric == 'fatalities':
         q = b.query('SELECT COUNT(*) AS records, COUNT(killed_victims) AS known, '
@@ -215,7 +218,7 @@ def prepare(toolkit, turn_id: str) -> dict:
         b.fact('There were {value} recorded fatalities' + scope + '.', request.metric, q)
     else:
         q = b.query('SELECT COUNT(*) AS n FROM collisions' + where, request.metric)
-        label = 'reported fatal collisions' if request.fatal else 'reported collisions'
+        label = 'reported collisions coded as fatal' if request.fatal else 'reported collisions'
         if request.motorcycle:
             label += ' involving a motorcycle'
         b.fact('There were {value} ' + label + scope + '.', request.metric, q)
