@@ -17,7 +17,8 @@ import time
 
 import duckdb
 
-from switrs_agent.dataset_integrity import compare_records, sha256
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from switrs_agent.dataset_integrity import INTEGRITY_VERSION, compare_records, sha256, validate_source
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TRANSFORM_VERSION = "build_duckdb v1: TRY_CAST INT->BIGINT, REAL->DOUBLE, dates->DATE, time->TIME, ''->NULL"
@@ -80,6 +81,8 @@ def main() -> None:
     src_hash = sha256(src_path)
     src = sqlite3.connect(f"file:{src_path}?immutable=1", uri=True)
     dst = duckdb.connect(args.duckdb, read_only=True)
+    print("validating source numeric domains ...", flush=True)
+    source_problems = validate_source(src)
 
     columns_report = {}
     for table in TABLES:
@@ -117,7 +120,7 @@ def main() -> None:
             records[table] = compare_records(src, dst, table)
         except (ValueError, ArithmeticError) as exc:
             records[table] = {"match": False, "error": str(exc)}
-    problems = assess(columns_report, keys, aggregates)
+    problems = source_problems + assess(columns_report, keys, aggregates)
     problems += [f"record comparison failed: {table}" for table, result in records.items() if not result['match']]
     lossy = {k: v for k, v in columns_report.items() if v["values_lost_to_cast"] > 0}
     rows = {t: int(dst.execute(f"SELECT count(*) FROM {t}").fetchone()[0]) for t in TABLES}
@@ -134,7 +137,8 @@ def main() -> None:
         "coverage": {"min_collision_date": str(coverage[0]), "max_collision_date": str(coverage[1])},
         "key_checks": keys,
         "record_comparison": records,
-        "integrity_version": 1,
+        "integrity_version": INTEGRITY_VERSION,
+        "source_validation": {"match": not source_problems, "problems": source_problems},
         "aggregates": aggregates,
         "columns_with_cast_losses": lossy,
         "problems": problems,

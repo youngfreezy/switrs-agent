@@ -19,7 +19,7 @@ from datetime import date
 
 from . import answerability, certification, claims, grounding, guard, semantic
 from .db import Database
-from .dataset_integrity import sha256
+from .dataset_integrity import INTEGRITY_VERSION, sha256
 from .request_binding import new_request, read_request, same_question
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -41,7 +41,7 @@ def load_dataset_meta() -> dict:
     meta = json.loads(DATASET_META.read_text())
     if meta.get("status") != "ok":
         raise RuntimeError(f"Dataset reconciliation failed: {meta.get('problems')}")
-    if meta.get("integrity_version") != 1:
+    if meta.get("integrity_version") != INTEGRITY_VERSION:
         raise RuntimeError("Dataset record verification is missing. Run scripts/reconcile.py again.")
     db_path = pathlib.Path(os.environ.get("SWITRS_DB", ROOT / "data" / "switrs.duckdb"))
     recorded = meta.get("duckdb_file") or {}

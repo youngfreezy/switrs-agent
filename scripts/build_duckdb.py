@@ -7,8 +7,12 @@ import argparse
 import json
 import pathlib
 import sys
+import sqlite3
 
 import duckdb
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from switrs_agent.dataset_integrity import validate_source
 
 TABLES = ["collisions", "parties", "victims", "case_ids"]
 EXPECTED_ROWS = {
@@ -21,6 +25,10 @@ CATEGORY_MAX = 80  # columns with at most this many distinct values get a full v
 
 
 def convert(con: duckdb.DuckDBPyConnection, sqlite_path: str) -> None:
+    with sqlite3.connect(pathlib.Path(sqlite_path).resolve().as_uri() + '?immutable=1', uri=True) as source:
+        problems = validate_source(source)
+    if problems:
+        raise ValueError('Source validation failed: ' + '; '.join(problems))
     con.execute("INSTALL sqlite; LOAD sqlite;")
     # Some INT columns hold stray text codes, so read everything as text and cast below.
     con.execute("SET sqlite_all_varchar = true;")

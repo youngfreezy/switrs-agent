@@ -6,10 +6,45 @@ from itertools import zip_longest
 
 KEYS = {'collisions': ('case_id',), 'parties': ('case_id', 'party_number'),
         'victims': ('id',), 'case_ids': ('case_id',)}
+INTEGRITY_VERSION = 2
+BINARY_COLUMNS = {'motorcycle_collision', 'bicycle_collision', 'pedestrian_collision',
+                  'truck_collision', 'alcohol_involved', 'at_fault', 'cellphone_in_use'}
+COUNT_COLUMNS = {'killed_victims', 'injured_victims', 'party_count',
+                 'party_number_killed', 'party_number_injured'}
 
 
 def quoted(name):
     return '"' + name.replace('"', '""') + '"'
+
+
+def validate_source(source, tables=tuple(KEYS)):
+    """Inspect SQLite values before any lossy integer conversion can occur.
+
+    SQLite INTEGER affinity stores valid numeric integers as integers already.
+    Empty strings and NULL remain the documented missing-value normalization.
+    One aggregate scan per table checks all numeric fields together.
+    """
+    problems = []
+    for table in tables:
+        checks = {}
+        for _, name, declaration, *_ in source.execute(f'PRAGMA table_info({quoted(table)})'):
+            col = quoted(name)
+            invalid = []
+            if declaration.upper().startswith('INT'):
+                invalid.append(f"typeof({col}) <> 'integer'")
+            elif declaration.upper() == 'REAL':
+                invalid.append(f"typeof({col}) NOT IN ('integer','real') OR ABS({col}) > 1.7976931348623157e308")
+            if name in BINARY_COLUMNS:
+                invalid.append(f"typeof({col}) NOT IN ('integer','real') OR {col} NOT IN (0,1)")
+            if name in COUNT_COLUMNS:
+                invalid.append(f'{col} < 0')
+            if invalid:
+                checks[name] = f"SUM(CASE WHEN {col} IS NOT NULL AND {col} <> '' AND ({' OR '.join(invalid)}) THEN 1 ELSE 0 END)"
+        if checks:
+            counts = source.execute(f'SELECT {",".join(checks.values())} FROM {quoted(table)}').fetchone()
+            problems.extend(f'{table}.{name}: {count} invalid source values'
+                            for name, count in zip(checks, counts) if count)
+    return problems
 
 
 def canonical(value, name, declaration):

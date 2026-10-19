@@ -4,12 +4,21 @@ import os
 import shutil
 import sqlite3
 import sys
+import subprocess
+from pathlib import Path
 
 import duckdb
 import pytest
 
 from scripts import build_duckdb, reconcile
 from switrs_agent import tools
+
+
+@pytest.mark.parametrize('script', ['build_duckdb.py', 'reconcile.py'])
+def test_data_scripts_launch_outside_checkout(tmp_path, script):
+    path = Path(__file__).resolve().parents[1] / 'scripts' / script
+    result = subprocess.run([sys.executable, str(path), '--help'], cwd=tmp_path, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.fixture
@@ -105,3 +114,19 @@ def test_record_order_does_not_change_reconciliation(snapshot, monkeypatch):
         ALTER TABLE reordered RENAME TO collisions;
     ''')
     assert reconcile_pair(monkeypatch, source, target, meta)['status'] == 'ok'
+
+
+@pytest.mark.parametrize('value', ['0.6', '-1', '2', "'not known'"])
+def test_r5_invalid_binary_source_is_rejected_before_casting(snapshot, value):
+    source, _, _ = snapshot('bad-flag', source_sql=f'UPDATE collisions SET motorcycle_collision={value};')
+    with duckdb.connect(':memory:') as dst:
+        with pytest.raises(ValueError, match='motorcycle_collision'):
+            build_duckdb.convert(dst, str(source))
+        assert dst.execute('SHOW TABLES').fetchall() == []
+
+
+def test_invalid_source_cannot_be_approved_even_when_copy_contains_same_value(snapshot, monkeypatch):
+    source, target, meta = snapshot('both-invalid', source_sql='UPDATE collisions SET motorcycle_collision=2;')
+    result = reconcile_pair(monkeypatch, source, target, meta)
+    assert result['status'] == 'failed'
+    assert any('invalid source' in p for p in result['problems'])
