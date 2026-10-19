@@ -31,7 +31,7 @@ The same tools the agent calls are available directly. The SQL guard applies her
 
 ```sh
 uv run switrs context                                   # the grounding text the agent reads first
-uv run switrs describe parties                          # columns, meanings, null share, real values
+uv run switrs describe parties                          # columns, meanings, catalog categories
 uv run switrs values parties vehicle_make --contains porsch
 uv run switrs sql "SELECT county_location, COUNT(*) AS n FROM collisions GROUP BY 1 ORDER BY 2 DESC LIMIT 5"
 uv run switrs sql "DROP TABLE collisions"               # rejected: only one SELECT is allowed

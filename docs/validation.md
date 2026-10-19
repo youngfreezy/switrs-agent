@@ -36,10 +36,20 @@ These 11 questions are known smoke examples. They are not a held-out generalizat
 The Kaggle SQLite file is the untouched source. It is only ever opened in immutable read-only mode. `scripts/build_duckdb.py` makes an analytical copy, and `scripts/reconcile.py` must pass before the tools will start. Reconciliation checks:
 
 - non-NULL counts per column against the source (any value lost in conversion fails)
+- numeric source domains before conversion, including exact integer affinity, binary flags, and nonnegative counts
+- all source and copied column values compared in key order, with bounded Python memory; changed associations fail even if all marginal totals match
 - key uniqueness and orphan rows
 - aggregates by year, severity, county and injury
 
-The result goes in `data/dataset_meta.json`, along with the source SHA-256 and the DuckDB file's size and modification time. The tools refuse to start if the database changed after reconciliation.
+The result goes in `data/dataset_meta.json`, along with the source and analytical SHA-256 digests, the integrity version, and the DuckDB file's size and modification time. The tools hash the analytical file at startup and reject substitutions even when size and timestamp match. Reconcile again after this upgrade; older manifests do not contain the required checks. Record comparison scans and sorts the source and copy; allow additional reconciliation time and temporary space on the full dataset.
+
+Run the new synthetic regressions without the large dataset or model credentials:
+
+```sh
+uv run pytest -q tests/test_dataset_integrity.py tests/test_snapshot_coverage.py tests/test_fatal_classification.py tests/test_integrity_followup.py
+```
+
+These tests preserve both sides of the contract: corrupted data cannot become a certified measurement, and supported questions on valid records still return independently checked answers.
 
 Recorded engine comparisons returned matching aggregates. A nine-query comparison and a separate ten-query review both passed. SQLite took 86 to 111 seconds in total, against 1.35 to 1.5 seconds for DuckDB. These historical timings exclude an indexed SQLite copy and are not a performance guarantee.
 
