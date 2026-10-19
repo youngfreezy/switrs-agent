@@ -118,10 +118,12 @@ def main() -> None:
     print("comparing complete records by key ...", flush=True)
     records = {}
     for table in TABLES:
+        print(f"comparing complete {table} records ...", flush=True)
         try:
             records[table] = compare_records(src, dst, table)
         except (ValueError, ArithmeticError) as exc:
             records[table] = {"match": False, "error": str(exc)}
+        print(f"{table}: {json.dumps(records[table])}", flush=True)
     problems = source_problems + assess(columns_report, keys, aggregates)
     problems += [f"record comparison failed: {table}" for table, result in records.items() if not result['match']]
     lossy = {k: v for k, v in columns_report.items() if v["values_lost_to_cast"] > 0}
