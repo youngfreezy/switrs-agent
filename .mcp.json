@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "switrs": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "switrs_agent.mcp_server"]
+    }
+  }
+}

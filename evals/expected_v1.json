@@ -1,0 +1,69 @@
+{
+ "dataset_version": "switrs-v6-b72ee1f04808",
+ "frozen_at": "2026-10-19T16:23:01",
+ "values": {
+  "q01_top_county": {
+   "LA collision count or share": [
+    2851925.0,
+    30.26129
+   ]
+  },
+  "q02_parked_vehicle": {
+   "share where the crash primarily involved a parked motor vehicle": [
+    7.380638
+   ],
+   "share with at least one parked party (party_type 'parked vehicle', movement 'parked', or either)": [
+    9.988876,
+    9.667919,
+    10.315233
+   ]
+  },
+  "q03_safety_equipment": {},
+  "q04_covid": {
+   "2020 vs 2019 change in collisions (calendar year or April-December), or the 2020 count": [
+    -22.09728,
+    -25.2039,
+    366417.0,
+    265675.0
+   ],
+   "April 2020 vs April 2019 change (percent) or April 2020 count": [
+    -46.052099,
+    19985.0
+   ],
+   "fatal share of collisions in 2020 (calendar year or April-December, percent)": [
+    0.93309,
+    0.992566
+   ]
+  },
+  "q05_red_sports_car_bias": {},
+  "q06_drinking_drivers": {
+   "distinct collisions (not party rows)": [
+    904085.0
+   ]
+  },
+  "q07_fatal_motorcycle_2019": {
+   "fatal motorcycle collisions in 2019": [
+    480.0
+   ]
+  },
+  "q08_fatal_hour": {
+   "fatal crashes in that hour": [
+    3921.0
+   ]
+  },
+  "q09_cellphone_at_fault": {
+   "share among drivers with a known cellphone value (percent)": [
+    2.515521
+   ]
+  },
+  "q10_las_vegas": {},
+  "q11_belt_death_share": {
+   "death share, belt used (percent)": [
+    0.341874
+   ],
+   "death share, belt not used (percent)": [
+    8.209667
+   ]
+  }
+ }
+}

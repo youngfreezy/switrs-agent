@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram id="switrs-arch" name="How the agent works">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="760" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;switrs-agent&lt;/b&gt;: how a question becomes a checked answer" style="text;html=1;align=left;verticalAlign=middle;fontSize=20;fontColor=#1f2937;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="700" height="36" as="geometry" />
+        </mxCell>
+
+        <mxCell id="user" value="&lt;b&gt;You, in a terminal&lt;/b&gt;&lt;br&gt;&lt;br&gt;switrs ask &quot;...&quot;&lt;br&gt;switrs chat&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;switrs sql / values / describe&lt;br&gt;call the tools with no model&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#f3f4f6;strokeColor=#6b7280;fontSize=13;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="220" height="190" as="geometry" />
+        </mxCell>
+
+        <mxCell id="claude" value="&lt;b&gt;Claude&lt;/b&gt;&lt;br&gt;claude-opus-5-5&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;plans queries, writes SQL, drafts the answer&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#efe7fb;strokeColor=#7c3aed;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="420" y="80" width="260" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="agent" value="agent.py (the switrs CLI)" style="swimlane;startSize=30;html=1;rounded=1;arcSize=6;fillColor=#dbeafe;strokeColor=#2563eb;fontStyle=1;fontSize=13;swimlaneFillColor=#f8fbff;" vertex="1" parent="1">
+          <mxGeometry x="420" y="270" width="260" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="&lt;b&gt;api backend&lt;/b&gt;&lt;br&gt;our own tool loop on the Messages API&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;needs ANTHROPIC_API_KEY&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93c5fd;fontSize=12;" vertex="1" parent="agent">
+          <mxGeometry x="12" y="42" width="236" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sdk" value="&lt;b&gt;sdk backend&lt;/b&gt;&lt;br&gt;Claude Agent SDK on your claude login,&lt;br&gt;built-in tools, hooks and settings off&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;a Claude subscription works&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#93c5fd;fontSize=12;" vertex="1" parent="agent">
+          <mxGeometry x="12" y="132" width="236" height="86" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mcp" value="&lt;b&gt;mcp_server.py&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;one source for the rules and the tools&lt;/font&gt;&lt;br&gt;&lt;br&gt;system prompt: the answering workflow&lt;br&gt;&lt;br&gt;get_context &amp;middot; begin_question&lt;br&gt;describe_table &amp;middot; distinct_values&lt;br&gt;run_sql &amp;middot; submit_answer&lt;br&gt;get_trace &amp;middot; render_answer" style="rounded=1;whiteSpace=wrap;html=1;arcSize=6;fillColor=#ecfdf5;strokeColor=#059669;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="770" y="270" width="250" height="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="toolkit" value="Toolkit (tools.py)" style="swimlane;startSize=30;html=1;rounded=1;arcSize=6;fillColor=#fef3c7;strokeColor=#d97706;fontStyle=1;fontSize=13;swimlaneFillColor=#fffdf5;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="200" width="300" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="begin" value="&lt;b&gt;begin_question&lt;/b&gt;: checks answerability,&lt;br&gt;lists the gaps the answer must state&lt;br&gt;(no color column, no traffic stops...)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fbbf24;fontSize=12;" vertex="1" parent="toolkit">
+          <mxGeometry x="12" y="40" width="276" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="claims" value="&lt;b&gt;submit_answer&lt;/b&gt;: binds every number to a&lt;br&gt;query result cell, then renders the final&lt;br&gt;answer with gaps, caveats and evidence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#fbbf24;fontSize=12;" vertex="1" parent="toolkit">
+          <mxGeometry x="12" y="118" width="276" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="trace" value="outputs/traces/&amp;lt;session&amp;gt;.jsonl&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;every call, plan, SQL and rejection&lt;/font&gt;" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f9fafb;strokeColor=#9ca3af;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="70" width="260" height="76" as="geometry" />
+        </mxCell>
+
+        <mxCell id="guard" value="&lt;b&gt;SQL guard (guard.py)&lt;/b&gt;&lt;br&gt;one SELECT only, known tables and columns,&lt;br&gt;join checks, EXPLAIN dry run" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#dc2626;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="450" width="300" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="db" value="&lt;b&gt;DuckDB, read-only&lt;/b&gt;&lt;br&gt;switrs.duckdb&lt;br&gt;&lt;font color=&quot;#6b7280&quot;&gt;collisions, parties,&lt;br&gt;victims, case_ids&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=12;fillColor=#e0f2fe;strokeColor=#0284c7;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="430" width="170" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="build" value="Kaggle SQLite file&lt;br&gt;&amp;darr;&lt;br&gt;build_duckdb.py + reconcile.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#9ca3af;dashed=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="610" width="170" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="others" value="&lt;b&gt;Other MCP clients&lt;/b&gt;&lt;br&gt;Claude Code or Cursor (.mcp.json),&lt;br&gt;web chat (ui/server.py), HTTP MCP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9fafb;strokeColor=#9ca3af;dashed=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="770" y="590" width="250" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_q" value="1. question" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#374151;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" edge="1" parent="1" source="user" target="agent">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_a" value="6. checked answer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#059669;fontSize=12;fontColor=#047857;labelBackgroundColor=#ffffff;exitX=0;exitY=0.8;exitDx=0;exitDy=0;entryX=1;entryY=0.8;entryDx=0;entryDy=0;" edge="1" parent="1" source="agent" target="user">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_llm" value="2. prompt, tool specs, results&lt;br&gt;&amp;uarr;&amp;darr; tool calls, draft" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#7c3aed;fontSize=12;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="agent" target="claude">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_mcp" value="3. tool calls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#374151;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="agent" target="mcp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_kit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#374151;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.6;entryDx=0;entryDy=0;" edge="1" parent="1" source="mcp" target="toolkit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sql" value="4. SQL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#374151;fontSize=12;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="toolkit" target="guard">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_db" value="5. rows" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#0284c7;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="guard" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_trace" value="log" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#9ca3af;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0.9;entryDx=0;entryDy=0;" edge="1" parent="1" source="toolkit" target="trace">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_build" value="builds and checks" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#9ca3af;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="build" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_others" value="same tools, same rules" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#9ca3af;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="others" target="mcp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

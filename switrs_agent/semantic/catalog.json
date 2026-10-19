@@ -1,0 +1,1748 @@
+{
+ "collisions": {
+  "rows": 9424334,
+  "columns": {
+   "case_id": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 11002247,
+    "top_values": {
+     "3985105": 1,
+     "3987660": 1,
+     "3987664": 1,
+     "3990251": 1,
+     "3993911": 1
+    }
+   },
+   "jurisdiction": {
+    "type": "BIGINT",
+    "null_pct": 0.12,
+    "distinct_approx": 374,
+    "min": "100",
+    "max": "9875"
+   },
+   "officer_id": {
+    "type": "VARCHAR",
+    "null_pct": 0.24,
+    "distinct_approx": 109152,
+    "top_values": {
+     "415": 5838,
+     "34426": 4836,
+     "288": 4554,
+     "127": 4500,
+     "134": 4296
+    }
+   },
+   "reporting_district": {
+    "type": "VARCHAR",
+    "null_pct": 59.13,
+    "distinct_approx": 41981,
+    "top_values": {
+     "0": 367510,
+     "2": 62016,
+     "1": 59556,
+     "3": 41831,
+     "480": 27366
+    }
+   },
+   "chp_shift": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 5,
+    "values": {
+     "not chp": 5080518,
+     "1400 thru 2159": 1980875,
+     "0600 thru 1359": 1637314,
+     "2200 thru 0559": 694425,
+     "chp not stated": 31202
+    }
+   },
+   "population": {
+    "type": "VARCHAR",
+    "null_pct": 0.02,
+    "distinct_approx": 7,
+    "values": {
+     ">250000": 2341749,
+     "unincorporated": 2208674,
+     "100000 to 250000": 1764711,
+     "50000 to 100000": 1707976,
+     "25000 to 50000": 836319,
+     "10000 to 25000": 386744,
+     "2500 to 10000": 131319,
+     "<2500": 45183
+    }
+   },
+   "county_city_location": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 616,
+    "top_values": {
+     "1942": 1086602,
+     "1900": 338600,
+     "3400": 198752,
+     "3711": 197264,
+     "0109": 167050
+    }
+   },
+   "county_location": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 58,
+    "values": {
+     "los angeles": 2851925,
+     "orange": 728565,
+     "san bernardino": 569376,
+     "san diego": 535596,
+     "riverside": 493758,
+     "alameda": 466969,
+     "sacramento": 403575,
+     "santa clara": 342603,
+     "contra costa": 217025,
+     "san joaquin": 209185,
+     "ventura": 203072,
+     "kern": 195861,
+     "fresno": 177368,
+     "san mateo": 166160,
+     "stanislaus": 143902,
+     "san francisco": 133437,
+     "monterey": 124455,
+     "sonoma": 121168,
+     "santa barbara": 120853,
+     "tulare": 119143,
+     "solano": 105171,
+     "san luis obispo": 80284,
+     "placer": 79195,
+     "merced": 77086,
+     "santa cruz": 75746,
+     "marin": 62680,
+     "yolo": 47792,
+     "shasta": 47134,
+     "madera": 45282,
+     "butte": 42708,
+     "humboldt": 42697,
+     "napa": 41473,
+     "el dorado": 38801,
+     "kings": 32004,
+     "imperial": 27280,
+     "mendocino": 26730,
+     "nevada": 26432,
+     "sutter": 21618,
+     "tuolumne": 17797,
+     "tehama": 17343,
+     "yuba": 16902,
+     "lake": 14755,
+     "san benito": 14096,
+     "calaveras": 12644,
+     "siskiyou": 11925,
+     "amador": 11032,
+     "lassen": 8207,
+     "colusa": 7404,
+     "del norte": 7231,
+     "glenn": 7084,
+     "mono": 6422,
+     "inyo": 6232,
+     "plumas": 6021,
+     "mariposa": 5185,
+     "trinity": 4375,
+     "modoc": 2588,
+     "alpine": 1535,
+     "sierra": 1447
+    }
+   },
+   "special_condition": {
+    "type": "VARCHAR",
+    "null_pct": 5.52,
+    "distinct_approx": 2,
+    "values": {
+     "0": 8867431,
+     "1": 36420
+    }
+   },
+   "beat_type": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 5,
+    "values": {
+     "not chp": 5080518,
+     "chp state highway": 3058638,
+     "chp county roadarea": 816955,
+     "chp county roadline": 443967,
+     "schoolbus on city roadway": 24256
+    }
+   },
+   "chp_beat_type": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 9,
+    "values": {
+     "not chp": 5080518,
+     "interstate": 1541959,
+     "state route": 1144829,
+     "county road area": 818200,
+     "county road line": 434833,
+     "us highway": 365811,
+     "safety services program": 35442,
+     "administrative": 2742
+    }
+   },
+   "city_division_lapd": {
+    "type": "VARCHAR",
+    "null_pct": 93.6,
+    "distinct_approx": 19,
+    "values": {
+     "L": 48336,
+     "J": 44281,
+     "O": 39610,
+     "Q": 39153,
+     "G": 38278,
+     "M": 37491,
+     "K": 34172,
+     "I": 34160,
+     "C": 34118,
+     "N": 33472,
+     "H": 30944,
+     "R": 30698,
+     "F": 29376,
+     "P": 28313,
+     "B": 28249,
+     "A": 26813,
+     "D": 23442,
+     "E": 22110
+    }
+   },
+   "chp_beat_class": {
+    "type": "VARCHAR",
+    "null_pct": 0.03,
+    "distinct_approx": 3,
+    "values": {
+     "not chp": 5080518,
+     "chp other": 3656417,
+     "chp primary": 684905
+    }
+   },
+   "beat_number": {
+    "type": "VARCHAR",
+    "null_pct": 8.62,
+    "distinct_approx": 43280,
+    "top_values": {
+     "002": 474768,
+     "001": 474161,
+     "003": 399953,
+     "004": 293657,
+     "005": 187131
+    }
+   },
+   "primary_road": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 358667,
+    "top_values": {
+     "RT 101": 221154,
+     "RT 5": 220957,
+     "RT 10": 136936,
+     "RT 405": 106191,
+     "RT 99": 95003
+    }
+   },
+   "secondary_road": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 473943,
+    "top_values": {
+     "MAIN ST": 36654,
+     "CENTRAL AV": 27258,
+     "4TH ST": 25112,
+     "BROADWAY": 23774,
+     "RT 101": 23562
+    }
+   },
+   "distance": {
+    "type": "DOUBLE",
+    "null_pct": 0.0,
+    "distinct_approx": 10221,
+    "min": "-396000.0",
+    "max": "9488160.0"
+   },
+   "direction": {
+    "type": "VARCHAR",
+    "null_pct": 24.88,
+    "distinct_approx": 6,
+    "values": {
+     "south": 1938958,
+     "north": 1916404,
+     "east": 1617831,
+     "west": 1606611,
+     "155.00": 1,
+     "Y": 1
+    }
+   },
+   "intersection": {
+    "type": "BIGINT",
+    "null_pct": 1.0,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "weather_1": {
+    "type": "VARCHAR",
+    "null_pct": 0.48,
+    "distinct_approx": 7,
+    "values": {
+     "clear": 7754370,
+     "cloudy": 1228913,
+     "raining": 328694,
+     "fog": 39094,
+     "snowing": 13254,
+     "other": 10970,
+     "wind": 3818
+    }
+   },
+   "weather_2": {
+    "type": "VARCHAR",
+    "null_pct": 97.21,
+    "distinct_approx": 7,
+    "values": {
+     "raining": 199228,
+     "wind": 24958,
+     "cloudy": 18983,
+     "other": 6705,
+     "fog": 6514,
+     "snowing": 6491,
+     "clear": 1
+    }
+   },
+   "state_highway_indicator": {
+    "type": "BIGINT",
+    "null_pct": 0.04,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "caltrans_county": {
+    "type": "VARCHAR",
+    "null_pct": 72.87,
+    "distinct_approx": 63,
+    "values": {
+     "los angeles": 654572,
+     "orange": 236512,
+     "san bernardino": 166223,
+     "san diego": 165852,
+     "alameda": 142554,
+     "riverside": 138633,
+     "santa clara": 119106,
+     "sacramento": 79801,
+     "san mateo": 62222,
+     "ventura": 58459,
+     "contra costa": 55872,
+     "kern": 52794,
+     "san joaquin": 46205,
+     "fresno": 40214,
+     "santa barbara": 38026,
+     "solano": 36575,
+     "sonoma": 32695,
+     "stanislaus": 31357,
+     "san francisco": 31149,
+     "monterey": 27677,
+     "tulare": 26552,
+     "placer": 23845,
+     "san luis obispo": 23660,
+     "santa cruz": 21977,
+     "merced": 20053,
+     "marin": 17979,
+     "shasta": 15588,
+     "napa": 14104,
+     "humboldt": 13210,
+     "madera": 12890,
+     "yolo": 12872,
+     "el dorado": 11361,
+     "mendocino": 10936,
+     "butte": 10607,
+     "imperial": 10337,
+     "nevada": 10171,
+     "kings": 6874,
+     "sutter": 6705,
+     "tuolumne": 5748,
+     "lake": 5672,
+     "tehama": 5617,
+     "calaveras": 5546,
+     "siskiyou": 5077,
+     "amador": 5040,
+     "lassen": 4468,
+     "san benito": 4177,
+     "yuba": 3960,
+     "mono": 3580,
+     "del norte": 3034,
+     "colusa": 2969,
+     "plumas": 2950,
+     "inyo": 2914,
+     "glenn": 2542,
+     "mariposa": 2413,
+     "trinity": 2194,
+     "modoc": 1074,
+     "alpine": 981,
+     "sierra": 857,
+     "10": 1,
+     "ora": 1,
+     "N": 1
+    }
+   },
+   "caltrans_district": {
+    "type": "BIGINT",
+    "null_pct": 69.32,
+    "distinct_approx": 16,
+    "min": "0",
+    "max": "49"
+   },
+   "state_route": {
+    "type": "BIGINT",
+    "null_pct": 69.32,
+    "distinct_approx": 278,
+    "min": "0",
+    "max": "980"
+   },
+   "route_suffix": {
+    "type": "VARCHAR",
+    "null_pct": 97.92,
+    "distinct_approx": 3,
+    "values": {
+     "B": 188090,
+     "S": 6069,
+     "U": 2072
+    }
+   },
+   "postmile_prefix": {
+    "type": "VARCHAR",
+    "null_pct": 90.28,
+    "distinct_approx": 10,
+    "values": {
+     "R": 715861,
+     "B": 133761,
+     "M": 34326,
+     "L": 15004,
+     "T": 14061,
+     "S": 2041,
+     "C": 550,
+     "N": 203,
+     "H": 119,
+     "D": 118,
+     "9.12": 1
+    }
+   },
+   "postmile": {
+    "type": "DOUBLE",
+    "null_pct": 69.32,
+    "distinct_approx": 29644,
+    "min": "-76.07",
+    "max": "998.239"
+   },
+   "location_type": {
+    "type": "VARCHAR",
+    "null_pct": 72.87,
+    "distinct_approx": 3,
+    "values": {
+     "highway": 2019081,
+     "ramp": 370725,
+     "intersection": 167227
+    }
+   },
+   "ramp_intersection": {
+    "type": "VARCHAR",
+    "null_pct": 89.18,
+    "distinct_approx": 10,
+    "values": {
+     "not state highway": 333975,
+     "highway": 148031,
+     "not state highway, ramp-related, within 100 feet": 130652,
+     "intersection": 125380,
+     "mid-ramp": 113777,
+     "ramp exit, last 50 feet": 106120,
+     "not state highway, intersection-related, within 250 feet": 41827,
+     "ramp entry, first 50 feet": 20224,
+     "N": 1
+    }
+   },
+   "side_of_highway": {
+    "type": "VARCHAR",
+    "null_pct": 72.87,
+    "distinct_approx": 4,
+    "values": {
+     "northbound": 793048,
+     "southbound": 789409,
+     "westbound": 494613,
+     "eastbound": 479946,
+     "Y": 1
+    }
+   },
+   "tow_away": {
+    "type": "BIGINT",
+    "null_pct": 0.67,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "collision_severity": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 6,
+    "values": {
+     "property damage only": 5704634,
+     "pain": 2268304,
+     "other injury": 1163199,
+     "severe injury": 221775,
+     "fatal": 66421,
+     "N": 1
+    }
+   },
+   "killed_victims": {
+    "type": "BIGINT",
+    "null_pct": 0.02,
+    "distinct_approx": 13,
+    "min": "0",
+    "max": "13"
+   },
+   "injured_victims": {
+    "type": "BIGINT",
+    "null_pct": 0.03,
+    "distinct_approx": 48,
+    "min": "0",
+    "max": "105"
+   },
+   "party_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 30,
+    "min": "0",
+    "max": "92"
+   },
+   "primary_collision_factor": {
+    "type": "VARCHAR",
+    "null_pct": 0.6,
+    "distinct_approx": 6,
+    "values": {
+     "vehicle code violation": 8840231,
+     "unknown": 253587,
+     "other than driver": 203446,
+     "other improper driving": 61836,
+     "fell asleep": 9118,
+     "2": 1
+    }
+   },
+   "pcf_violation_code": {
+    "type": "VARCHAR",
+    "null_pct": 94.89,
+    "distinct_approx": 27,
+    "values": {
+     "vehicle": 480630,
+     "city ordinance": 548,
+     "A": 257,
+     "2": 109,
+     "business": 40,
+     "D": 35,
+     "county ordinance": 16,
+     "penal": 11,
+     "`": 8,
+     "E": 7,
+     "1": 7,
+     ".": 6,
+     "streets": 5,
+     "'": 4,
+     "M": 2,
+     "city health": 2,
+     "03": 1,
+     "~": 1,
+     "09": 1,
+     "U": 1,
+     "R": 1,
+     "welfare": 1,
+     "]": 1,
+     "\\": 1,
+     "3": 1
+    }
+   },
+   "pcf_violation_category": {
+    "type": "VARCHAR",
+    "null_pct": 1.66,
+    "distinct_approx": 25,
+    "values": {
+     "speeding": 2911725,
+     "improper turning": 1627618,
+     "automobile right of way": 1111967,
+     "dui": 695636,
+     "unsafe lane change": 653108,
+     "traffic signals and signs": 514782,
+     "unsafe starting or backing": 352417,
+     "unknown": 293802,
+     "wrong side of road": 219298,
+     "other than driver (or pedestrian)": 203446,
+     "following too closely": 201100,
+     "pedestrian violation": 99591,
+     "other hazardous violation": 95434,
+     "pedestrian right of way": 95130,
+     "improper passing": 87463,
+     "other improper driving": 62006,
+     "other equipment": 12085,
+     "hazardous parking": 11948,
+     "fell asleep": 9118,
+     "impeding traffic": 5435,
+     "brakes": 2585,
+     "lights": 1370,
+     "pedestrian dui": 465,
+     "22350": 1,
+     "21804": 1
+    }
+   },
+   "pcf_violation": {
+    "type": "BIGINT",
+    "null_pct": 6.89,
+    "distinct_approx": 1015,
+    "min": "0",
+    "max": "92350"
+   },
+   "pcf_violation_subsection": {
+    "type": "VARCHAR",
+    "null_pct": 64.16,
+    "distinct_approx": 32,
+    "values": {
+     "A": 3130348,
+     "B": 117833,
+     "1": 38161,
+     "C": 32998,
+     "D": 22522,
+     "F": 13537,
+     "5": 8428,
+     "E": 7899,
+     "G": 3492,
+     "I": 1563,
+     "2": 413,
+     "3": 241,
+     "8": 129,
+     "H": 116,
+     "S": 13,
+     "0": 13,
+     "V": 9,
+     "M": 8,
+     "P": 7,
+     "4": 7,
+     "6": 7,
+     "K": 5,
+     "O": 5,
+     "R": 3,
+     "N": 3,
+     "X": 2,
+     "Q": 2,
+     "L": 2,
+     "W": 2,
+     "J": 1,
+     "U": 1,
+     "Z": 1,
+     "22106": 1,
+     "T": 1,
+     "9": 1
+    }
+   },
+   "hit_and_run": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 5,
+    "values": {
+     "not hit and run": 7585927,
+     "misdemeanor": 1570716,
+     "felony": 267688,
+     "C": 1,
+     "D": 1
+    }
+   },
+   "type_of_collision": {
+    "type": "VARCHAR",
+    "null_pct": 0.81,
+    "distinct_approx": 11,
+    "values": {
+     "rear end": 3122251,
+     "broadside": 1853926,
+     "sideswipe": 1675764,
+     "hit object": 1523998,
+     "head-on": 411309,
+     "other": 255957,
+     "pedestrian": 253095,
+     "overturned": 252045,
+     "I": 2,
+     "N": 1,
+     "O": 1
+    }
+   },
+   "motor_vehicle_involved_with": {
+    "type": "VARCHAR",
+    "null_pct": 0.52,
+    "distinct_approx": 17,
+    "values": {
+     "other motor vehicle": 6157738,
+     "fixed object": 1464752,
+     "parked motor vehicle": 695576,
+     "pedestrian": 272573,
+     "non-collision": 257177,
+     "bicycle": 227417,
+     "other object": 194780,
+     "motor vehicle on other roadway": 61559,
+     "animal": 40572,
+     "train": 2917,
+     "8": 192,
+     "2": 139,
+     "9": 12,
+     "0": 5,
+     "4": 3,
+     "7": 3,
+     "3": 1
+    }
+   },
+   "pedestrian_action": {
+    "type": "VARCHAR",
+    "null_pct": 0.07,
+    "distinct_approx": 7,
+    "values": {
+     "no pedestrian involved": 9139344,
+     "crossing in intersection crosswalk": 120247,
+     "crossing not in crosswalk": 79198,
+     "in road": 51762,
+     "not in road": 20659,
+     "crossing non-intersection crosswalk": 6493,
+     "using school bus": 228,
+     "H": 1
+    }
+   },
+   "road_surface": {
+    "type": "VARCHAR",
+    "null_pct": 0.86,
+    "distinct_approx": 6,
+    "values": {
+     "dry": 8515058,
+     "wet": 775564,
+     "snowy": 41707,
+     "slippery": 10736,
+     "H": 103,
+     "J": 1,
+     "I": 1
+    }
+   },
+   "road_condition_1": {
+    "type": "VARCHAR",
+    "null_pct": 0.83,
+    "distinct_approx": 7,
+    "values": {
+     "normal": 9057657,
+     "construction": 151990,
+     "obstruction": 35883,
+     "other": 35804,
+     "holes": 28205,
+     "loose material": 19049,
+     "reduced width": 10080,
+     "flooded": 7368
+    }
+   },
+   "road_condition_2": {
+    "type": "VARCHAR",
+    "null_pct": 99.59,
+    "distinct_approx": 7,
+    "values": {
+     "normal": 18429,
+     "reduced width": 13640,
+     "construction": 3564,
+     "other": 1756,
+     "loose material": 711,
+     "obstruction": 434,
+     "flooded": 334,
+     "holes": 94
+    }
+   },
+   "lighting": {
+    "type": "VARCHAR",
+    "null_pct": 0.57,
+    "distinct_approx": 6,
+    "values": {
+     "daylight": 6279705,
+     "dark with street lights": 1981315,
+     "dark with no street lights": 762813,
+     "dusk or dawn": 329345,
+     "dark with street lights not functioning": 17847,
+     "G": 1
+    }
+   },
+   "control_device": {
+    "type": "VARCHAR",
+    "null_pct": 0.61,
+    "distinct_approx": 10,
+    "values": {
+     "none": 6229758,
+     "functioning": 3104567,
+     "not functioning": 26810,
+     "obscured": 5637,
+     "H": 10,
+     "E": 4,
+     "0": 2,
+     "G": 1,
+     "Q": 1
+    }
+   },
+   "chp_road_type": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 10,
+    "values": {
+     "0": 7655425,
+     "1": 1560298,
+     "6": 107332,
+     "5": 83234,
+     "4": 14175,
+     "3": 2470,
+     "7": 1251,
+     "2": 146,
+     "A": 1
+    }
+   },
+   "pedestrian_collision": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "bicycle_collision": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "motorcycle_collision": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "truck_collision": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "not_private_property": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 1,
+    "min": "1",
+    "max": "1"
+   },
+   "alcohol_involved": {
+    "type": "BIGINT",
+    "null_pct": 89.98,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "statewide_vehicle_type_at_fault": {
+    "type": "VARCHAR",
+    "null_pct": 19.81,
+    "distinct_approx": 17,
+    "values": {
+     "passenger car": 5647660,
+     "pickup or panel truck": 1063956,
+     "motorcycle or scooter": 155715,
+     "truck or truck tractor with trailer": 145389,
+     "bicycle": 142976,
+     "truck or truck tractor": 112273,
+     "pedestrian": 97217,
+     "emergency vehicle": 48285,
+     "pickup or panel truck with trailer": 44069,
+     "other vehicle": 36647,
+     "other bus": 29755,
+     "schoolbus": 16458,
+     "passenger car with trailer": 13616,
+     "highway construction equipment": 1927,
+     "moped": 1054,
+     "22": 1
+    }
+   },
+   "chp_vehicle_type_at_fault": {
+    "type": "VARCHAR",
+    "null_pct": 26.81,
+    "distinct_approx": 92,
+    "top_values": {
+     "passenger car, station": 3718313,
+     "pickups & panels": 886492,
+     "sport utility vehicle": 780484,
+     "unknown hit and run vehicle involvement": 340986,
+     "00": 262474
+    }
+   },
+   "severe_injury_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 20,
+    "min": "0",
+    "max": "28"
+   },
+   "other_visible_injury_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 29,
+    "min": "0",
+    "max": "41"
+   },
+   "complaint_of_pain_injury_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 39,
+    "min": "0",
+    "max": "73"
+   },
+   "pedestrian_killed_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 6,
+    "min": "0",
+    "max": "10"
+   },
+   "pedestrian_injured_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 17,
+    "min": "0",
+    "max": "64"
+   },
+   "bicyclist_killed_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 3,
+    "min": "0",
+    "max": "2"
+   },
+   "bicyclist_injured_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 10,
+    "min": "0",
+    "max": "11"
+   },
+   "motorcyclist_killed_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 5,
+    "min": "0",
+    "max": "4"
+   },
+   "motorcyclist_injured_count": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 10,
+    "min": "0",
+    "max": "9"
+   },
+   "primary_ramp": {
+    "type": "VARCHAR",
+    "null_pct": 98.22,
+    "distinct_approx": 13,
+    "values": {
+     "TO": 103840,
+     "FR": 41962,
+     "TR": 3798,
+     "southbound off-ramp": 3486,
+     "northbound off-ramp": 3440,
+     "northbound on-ramp": 2291,
+     "eastbound off-ramp": 2185,
+     "westbound off-ramp": 1932,
+     "southbound on-ramp": 1884,
+     "westbound on-ramp": 1185,
+     "eastbound on-ramp": 1158,
+     "CN": 415,
+     "CO": 407,
+     "0": 1
+    }
+   },
+   "secondary_ramp": {
+    "type": "VARCHAR",
+    "null_pct": 99.04,
+    "distinct_approx": 13,
+    "values": {
+     "southbound off-ramp": 16333,
+     "northbound off-ramp": 15670,
+     "eastbound off-ramp": 10220,
+     "northbound on-ramp": 10045,
+     "southbound on-ramp": 9856,
+     "westbound off-ramp": 9602,
+     "eastbound on-ramp": 6787,
+     "westbound on-ramp": 5936,
+     "TO": 3614,
+     "FR": 1262,
+     "TR": 768,
+     "CN": 700,
+     "CO": 124,
+     "37.23386": 1
+    }
+   },
+   "latitude": {
+    "type": "DOUBLE",
+    "null_pct": 71.41,
+    "distinct_approx": 648762,
+    "min": "32.5",
+    "max": "121.96483"
+   },
+   "longitude": {
+    "type": "DOUBLE",
+    "null_pct": 71.41,
+    "distinct_approx": 561465,
+    "min": "-124.49859",
+    "max": "-37.06021"
+   },
+   "collision_date": {
+    "type": "DATE",
+    "null_pct": 0.0,
+    "distinct_approx": 6998,
+    "min": "2001-01-01",
+    "max": "2021-06-03"
+   },
+   "collision_time": {
+    "type": "TIME",
+    "null_pct": 0.87,
+    "distinct_approx": 1445,
+    "min": "00:00:00",
+    "max": "23:59:00"
+   },
+   "process_date": {
+    "type": "DATE",
+    "null_pct": 0.0,
+    "distinct_approx": 4939,
+    "min": "2001-04-12",
+    "max": "2021-06-03"
+   }
+  }
+ },
+ "parties": {
+  "rows": 18669166,
+  "columns": {
+   "id": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 9834222,
+    "min": "1",
+    "max": "16432243"
+   },
+   "case_id": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 11002247,
+    "top_values": {
+     "3698263": 92,
+     "1237567": 76,
+     "0065479": 58,
+     "6959963": 38,
+     "3763361": 34
+    }
+   },
+   "party_number": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 92,
+    "min": "1",
+    "max": "92"
+   },
+   "party_type": {
+    "type": "VARCHAR",
+    "null_pct": 0.23,
+    "distinct_approx": 6,
+    "values": {
+     "driver": 16793164,
+     "parked vehicle": 1201697,
+     "pedestrian": 303756,
+     "bicyclist": 262236,
+     "other": 64443,
+     "6": 3
+    }
+   },
+   "at_fault": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "party_sex": {
+    "type": "VARCHAR",
+    "null_pct": 13.39,
+    "distinct_approx": 3,
+    "values": {
+     "male": 9907878,
+     "female": 6258217,
+     "X": 4028
+    }
+   },
+   "party_age": {
+    "type": "BIGINT",
+    "null_pct": 15.61,
+    "distinct_approx": 128,
+    "min": "0",
+    "max": "125"
+   },
+   "party_sobriety": {
+    "type": "VARCHAR",
+    "null_pct": 2.98,
+    "distinct_approx": 6,
+    "values": {
+     "had not been drinking": 14232676,
+     "impairment unknown": 1756937,
+     "not applicable": 1150871,
+     "had been drinking, under influence": 703945,
+     "had been drinking, impairment unknown": 146545,
+     "had been drinking, not under influence": 122157
+    }
+   },
+   "party_drug_physical": {
+    "type": "VARCHAR",
+    "null_pct": 83.81,
+    "distinct_approx": 5,
+    "values": {
+     "G": 1663519,
+     "not applicable": 1153168,
+     "sleepy/fatigued": 98710,
+     "under drug influence": 80905,
+     "impairment - physical": 27065
+    }
+   },
+   "direction_of_travel": {
+    "type": "VARCHAR",
+    "null_pct": 2.82,
+    "distinct_approx": 4,
+    "values": {
+     "south": 4883306,
+     "north": 4835304,
+     "west": 4219778,
+     "east": 4204835
+    }
+   },
+   "party_safety_equipment_1": {
+    "type": "VARCHAR",
+    "null_pct": 16.88,
+    "distinct_approx": 22,
+    "values": {
+     "air bag not deployed": 8401362,
+     "lap/shoulder harness used": 3175441,
+     "air bag deployed": 2054772,
+     "not required": 745138,
+     "unknown": 732723,
+     "other": 139051,
+     "none in vehicle": 56584,
+     "lap belt used": 53445,
+     "driver, motorcycle helmet used": 43515,
+     "lap/shoulder harness not used": 34728,
+     "shoulder harness used": 24951,
+     "passenger, motorcycle helmet used": 24270,
+     "driver, motorcycle helmet not used": 8753,
+     "lap belt not used": 6646,
+     "shoulder harness not used": 5514,
+     "no child restraint in vehicle": 3743,
+     "passive restraint used": 3483,
+     "passive restraint not used": 1513,
+     "child restraint in vehicle, use unknown": 842,
+     "child restraint in vehicle used": 734,
+     "child restraint in vehicle, improper use": 473,
+     "passenger, motorcycle helmet not used": 270,
+     "child restraint in vehicle not used": 201
+    }
+   },
+   "party_safety_equipment_2": {
+    "type": "VARCHAR",
+    "null_pct": 37.51,
+    "distinct_approx": 22,
+    "values": {
+     "lap/shoulder harness used": 10508141,
+     "unknown": 512154,
+     "driver, motorcycle helmet used": 204424,
+     "lap belt used": 92327,
+     "lap/shoulder harness not used": 88399,
+     "air bag not deployed": 76412,
+     "shoulder harness used": 48901,
+     "air bag deployed": 43676,
+     "not required": 19736,
+     "none in vehicle": 18696,
+     "driver, motorcycle helmet not used": 16381,
+     "shoulder harness not used": 10896,
+     "lap belt not used": 7894,
+     "passenger, motorcycle helmet used": 5071,
+     "passive restraint used": 3241,
+     "other": 3216,
+     "child restraint in vehicle used": 2675,
+     "child restraint in vehicle, use unknown": 1281,
+     "no child restraint in vehicle": 929,
+     "passive restraint not used": 711,
+     "child restraint in vehicle, improper use": 620,
+     "child restraint in vehicle not used": 452,
+     "passenger, motorcycle helmet not used": 309
+    }
+   },
+   "financial_responsibility": {
+    "type": "VARCHAR",
+    "null_pct": 8.19,
+    "distinct_approx": 4,
+    "values": {
+     "proof of insurance obtained": 13660698,
+     "not applicable": 1828503,
+     "no proof of insurance obtained": 1649047,
+     "officer called away before obtained": 2456
+    }
+   },
+   "hazardous_materials": {
+    "type": "BIGINT",
+    "null_pct": 99.81,
+    "distinct_approx": 1,
+    "min": "1",
+    "max": "1"
+   },
+   "cellphone_in_use": {
+    "type": "BIGINT",
+    "null_pct": 30.45,
+    "distinct_approx": 2,
+    "min": "0",
+    "max": "1"
+   },
+   "cellphone_use_type": {
+    "type": "VARCHAR",
+    "null_pct": 23.15,
+    "distinct_approx": 6,
+    "values": {
+     "cellphone not in use": 12719098,
+     "no cellphone/unknown": 1360709,
+     "cellphone in use (hands-free)": 138088,
+     "cellphone in use (handheld)": 84564,
+     "cellphone in use": 42243,
+     "4": 2047
+    }
+   },
+   "school_bus_related": {
+    "type": "BIGINT",
+    "null_pct": 99.72,
+    "distinct_approx": 1,
+    "min": "1",
+    "max": "1"
+   },
+   "oaf_violation_code": {
+    "type": "VARCHAR",
+    "null_pct": 99.57,
+    "distinct_approx": 12,
+    "values": {
+     "vehicle": 77922,
+     "A": 1744,
+     "business and professions": 371,
+     "city ordinance": 47,
+     "city health and safety": 36,
+     "penal": 20,
+     "2": 5,
+     "county ordinance": 3,
+     "streets and highways": 2,
+     "1": 1,
+     "`": 1
+    }
+   },
+   "oaf_violation_category": {
+    "type": "VARCHAR",
+    "null_pct": 93.12,
+    "distinct_approx": 32,
+    "values": {
+     "unsafe speed": 430141,
+     "improper turning": 357125,
+     "wrong side of road": 72925,
+     "hit and run": 61030,
+     "automobile right-of-way": 45839,
+     "unsafe lane change": 45550,
+     "other non-moving violation": 43502,
+     "following too closely": 33355,
+     "driving or bicycling under the influence of alcohol or drug": 33331,
+     "failure to heed stop signal": 26820,
+     "other hazardous movement": 24228,
+     "unsafe starting or backing": 23792,
+     "failure to heed stop sign": 19797,
+     "improper passing": 10776,
+     "pedestrian violation": 10503,
+     "other equipment": 9174,
+     "impeding traffic": 7831,
+     "lights": 7827,
+     "hazardous parking": 6082,
+     "pedestrian right-of-way": 4769,
+     "brakes": 3211,
+     "reckless driving": 3147,
+     "improper lane change": 1529,
+     "oversize": 505,
+     "off-highway vehicle violation": 324,
+     "seat belt": 281,
+     "child restraint": 180,
+     "improper registration": 93,
+     "under influence in public (647f)": 72,
+     "city ordinance": 37,
+     "overweight": 34,
+     "seat belt (equipment)": 10,
+     "excessive noise": 9,
+     "excessive smoke": 2,
+     "health/safety code (misdemeanor)": 1
+    }
+   },
+   "oaf_violation_section": {
+    "type": "VARCHAR",
+    "null_pct": 87.94,
+    "distinct_approx": 850,
+    "top_values": {
+     "0": 959440,
+     "22350": 427818,
+     "22107": 339312,
+     "20002": 51373,
+     "21658": 45446
+    }
+   },
+   "oaf_violation_suffix": {
+    "type": "VARCHAR",
+    "null_pct": 97.78,
+    "distinct_approx": 29,
+    "values": {
+     "A": 296880,
+     "0": 53676,
+     "B": 26023,
+     "1": 11568,
+     "D": 10524,
+     "C": 6024,
+     "5": 3751,
+     "2": 2232,
+     "E": 844,
+     "H": 764,
+     "F": 597,
+     "I": 412,
+     "8": 391,
+     "G": 304,
+     "3": 172,
+     "6": 82,
+     "4": 23,
+     "K": 13,
+     "L": 13,
+     "M": 13,
+     "S": 13,
+     "N": 9,
+     "J": 3,
+     "O": 2,
+     "R": 2,
+     "7": 1,
+     "W": 1,
+     "Y": 1
+    }
+   },
+   "other_associate_factor_1": {
+    "type": "VARCHAR",
+    "null_pct": 6.03,
+    "distinct_approx": 21,
+    "values": {
+     "none apparent": 14365420,
+     "violation": 1359736,
+     "inattention": 562151,
+     "stop and go traffic": 542890,
+     "entering/leaving ramp": 173707,
+     "other": 147392,
+     "vision obscurements": 110512,
+     "previous collision": 93096,
+     "uninvolved vehicle": 73329,
+     "runaway vehicle": 39390,
+     "defective vehicle equipment": 38963,
+     "unfamiliar with road": 30266,
+     "inattention, other": 4927,
+     "inattention, cell phone": 820,
+     "inattention, radio/cd": 697,
+     "inattention, children": 310,
+     "inattention, eating": 241,
+     "inattention, reading": 162,
+     "inattention, smoking": 102,
+     "inattention, electronic equip": 80,
+     "inattention, animal": 74,
+     "inattention, personal hygiene": 27
+    }
+   },
+   "other_associate_factor_2": {
+    "type": "VARCHAR",
+    "null_pct": 98.02,
+    "distinct_approx": 20,
+    "values": {
+     "none apparent": 187542,
+     "inattention": 52790,
+     "stop and go traffic": 33227,
+     "entering/leaving ramp": 24740,
+     "other": 21590,
+     "previous collision": 12929,
+     "uninvolved vehicle": 10282,
+     "vision obscurements": 8377,
+     "unfamiliar with road": 7543,
+     "defective vehicle equipment": 5923,
+     "runaway vehicle": 4140,
+     "inattention, other": 300,
+     "inattention, cell phone": 93,
+     "inattention, radio/cd": 72,
+     "inattention, eating": 18,
+     "inattention, children": 16,
+     "inattention, smoking": 13,
+     "inattention, reading": 4,
+     "inattention, animal": 2,
+     "inattention, electronic equip": 1,
+     "inattention, personal hygiene": 1
+    }
+   },
+   "party_number_killed": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 11,
+    "min": "0",
+    "max": "13"
+   },
+   "party_number_injured": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 41,
+    "min": "0",
+    "max": "55"
+   },
+   "movement_preceding_collision": {
+    "type": "VARCHAR",
+    "null_pct": 1.79,
+    "distinct_approx": 24,
+    "values": {
+     "proceeding straight": 8544921,
+     "stopped": 2602664,
+     "making left turn": 1360080,
+     "parked": 1152747,
+     "slowing/stopping": 1035102,
+     "changing lanes": 712423,
+     "making right turn": 535036,
+     "other": 524119,
+     "ran off road": 467224,
+     "other unsafe turning": 392602,
+     "backing": 278941,
+     "entering traffic": 258574,
+     "making u-turn": 125468,
+     "passing other vehicle": 111202,
+     "crossed into opposing lane": 85272,
+     "merging": 63419,
+     "traveling wrong way": 44587,
+     "parking maneuver": 40978,
+     "S": 26,
+     "0": 8,
+     "4": 1
+    }
+   },
+   "vehicle_year": {
+    "type": "BIGINT",
+    "null_pct": 9.52,
+    "distinct_approx": 190,
+    "min": "0",
+    "max": "8744"
+   },
+   "vehicle_make": {
+    "type": "VARCHAR",
+    "null_pct": 10.44,
+    "distinct_approx": 7141,
+    "top_values": {
+     "toyota": 2736693,
+     "ford": 2407493,
+     "honda": 1992090,
+     "chevrolet": 1728584,
+     "nissan": 1103702
+    }
+   },
+   "statewide_vehicle_type": {
+    "type": "VARCHAR",
+    "null_pct": 11.26,
+    "distinct_approx": 17,
+    "values": {
+     "passenger car": 12449516,
+     "pickup or panel truck": 2239166,
+     "truck or truck tractor with trailer": 347334,
+     "pedestrian": 296430,
+     "motorcycle or scooter": 284249,
+     "bicycle": 258358,
+     "truck or truck tractor": 239007,
+     "emergency vehicle": 116824,
+     "pickup or panel truck with trailer": 93665,
+     "other bus": 83131,
+     "other vehicle": 76608,
+     "schoolbus": 43678,
+     "passenger car with trailer": 30431,
+     "highway construction equipment": 5689,
+     "moped": 2065,
+     "04": 2
+    }
+   },
+   "chp_vehicle_type_towing": {
+    "type": "VARCHAR",
+    "null_pct": 21.47,
+    "distinct_approx": 95,
+    "top_values": {
+     "passenger car, station": 7930792,
+     "pickups & panels": 1827417,
+     "sport utility vehicle": 1817687,
+     "00": 610404,
+     "mini-vans": 542045
+    }
+   },
+   "chp_vehicle_type_towed": {
+    "type": "VARCHAR",
+    "null_pct": 48.74,
+    "distinct_approx": 98,
+    "top_values": {
+     "00": 9134005,
+     "semi": 199703,
+     "utility": 63479,
+     "pull": 41240,
+     "two trailers (includes semi & pull)": 29488
+    }
+   },
+   "party_race": {
+    "type": "VARCHAR",
+    "null_pct": 23.43,
+    "distinct_approx": 5,
+    "values": {
+     "white": 5932763,
+     "hispanic": 5013959,
+     "black": 1267606,
+     "asian": 1139060,
+     "other": 941649
+    }
+   }
+  }
+ },
+ "victims": {
+  "rows": 9639334,
+  "columns": {
+   "id": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 4828504,
+    "min": "1",
+    "max": "8817535"
+   },
+   "case_id": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 5634306,
+    "top_values": {
+     "5186423": 184,
+     "6854642": 119,
+     "3150216": 116,
+     "6422416": 116,
+     "0828420": 112
+    }
+   },
+   "party_number": {
+    "type": "BIGINT",
+    "null_pct": 0.0,
+    "distinct_approx": 88,
+    "min": "1",
+    "max": "89"
+   },
+   "victim_role": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 6,
+    "values": {
+     "passenger": 5496410,
+     "driver": 3313877,
+     "non-injured party": 299496,
+     "pedestrian": 287052,
+     "bicyclist": 232717,
+     "other": 9769
+    }
+   },
+   "victim_sex": {
+    "type": "VARCHAR",
+    "null_pct": 2.48,
+    "distinct_approx": 13,
+    "values": {
+     "female": 4709260,
+     "male": 4690557,
+     "4": 81,
+     "X": 57,
+     "3": 28,
+     "2": 14,
+     "1": 6,
+     "N": 4,
+     "G": 2,
+     "U": 2,
+     "B": 1,
+     "W": 1,
+     "H": 1,
+     "5": 1
+    }
+   },
+   "victim_age": {
+    "type": "BIGINT",
+    "null_pct": 3.35,
+    "distinct_approx": 128,
+    "min": "0",
+    "max": "999"
+   },
+   "victim_degree_of_injury": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 9,
+    "values": {
+     "no injury": 4275661,
+     "complaint of pain": 3343656,
+     "other visible injury": 1276783,
+     "possible injury": 268690,
+     "severe injury": 223601,
+     "suspected minor injury": 140438,
+     "killed": 73006,
+     "suspected serious injury": 37499
+    }
+   },
+   "victim_seating_position": {
+    "type": "VARCHAR",
+    "null_pct": 0.2,
+    "distinct_approx": 15,
+    "values": {
+     "driver": 3492966,
+     "passenger seat 3": 2912325,
+     "passenger seat 6": 1023913,
+     "passenger seat 4": 824121,
+     "position unknown": 514684,
+     "passenger seat 5": 351923,
+     "other occupants": 160108,
+     "passenger seat 2": 155702,
+     "station wagon rear": 103641,
+     "rear occupant of truck or van": 80454,
+     "A": 10,
+     "C": 7,
+     "B": 3
+    }
+   },
+   "victim_safety_equipment_1": {
+    "type": "VARCHAR",
+    "null_pct": 5.71,
+    "distinct_approx": 33,
+    "values": {
+     "air bag not deployed": 3575936,
+     "lap/shoulder harness used": 1850462,
+     "not required": 1515109,
+     "air bag deployed": 1430199,
+     "child restraint in vehicle used": 153435,
+     "unknown": 109828,
+     "lap belt used": 86981,
+     "other": 73818,
+     "none in vehicle": 73417,
+     "driver, motorcycle helmet used": 56139,
+     "lap/shoulder harness not used": 50799,
+     "driver, motorcycle helmet not used": 43214,
+     "shoulder harness used": 16077,
+     "lap belt not used": 12923,
+     "passenger, motorcycle helmet used": 12240,
+     "shoulder harness not used": 7529,
+     "no child restraint in vehicle": 6951,
+     "passive restraint used": 5805,
+     "child restraint in vehicle, improper use": 2041,
+     "passive restraint not used": 1527,
+     "child restraint in vehicle, use unknown": 1511,
+     "passenger, motorcycle helmet not used": 1423,
+     "child restraint in vehicle not used": 1365,
+     "1": 16,
+     "0": 12,
+     "3": 7,
+     "Z": 4,
+     "4": 3,
+     "O": 3,
+     "2": 3,
+     ",": 2,
+     "5": 1
+    }
+   },
+   "victim_safety_equipment_2": {
+    "type": "VARCHAR",
+    "null_pct": 32.21,
+    "distinct_approx": 28,
+    "values": {
+     "lap/shoulder harness used": 5246146,
+     "child restraint in vehicle used": 409613,
+     "driver, motorcycle helmet used": 204823,
+     "lap/shoulder harness not used": 111848,
+     "unknown": 101173,
+     "lap belt used": 98627,
+     "driver, motorcycle helmet not used": 77488,
+     "none in vehicle": 60409,
+     "not required": 52000,
+     "air bag not deployed": 36652,
+     "air bag deployed": 31410,
+     "shoulder harness used": 26573,
+     "lap belt not used": 13763,
+     "shoulder harness not used": 12754,
+     "no child restraint in vehicle": 12251,
+     "passenger, motorcycle helmet used": 11521,
+     "passive restraint used": 7368,
+     "child restraint in vehicle, improper use": 5211,
+     "other": 3783,
+     "child restraint in vehicle, use unknown": 3499,
+     "child restraint in vehicle not used": 3245,
+     "passenger, motorcycle helmet not used": 2819,
+     "passive restraint not used": 1535,
+     "Z": 57,
+     "0": 43,
+     "1": 3,
+     "O": 1,
+     "`": 1
+    }
+   },
+   "victim_ejected": {
+    "type": "VARCHAR",
+    "null_pct": 0.44,
+    "distinct_approx": 19,
+    "values": {
+     "not ejected": 8569044,
+     "unknown": 685284,
+     "fully ejected": 305438,
+     "partially ejected": 36660,
+     "o": 11,
+     "9": 7,
+     "4": 6,
+     "n": 4,
+     "N": 3,
+     "g": 3,
+     "O": 2,
+     "6": 1,
+     "`": 1,
+     "b": 1,
+     "y": 1,
+     "G": 1,
+     "w": 1,
+     "j": 1
+    }
+   }
+  }
+ },
+ "case_ids": {
+  "rows": 9424334,
+  "columns": {
+   "case_id": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 11002247,
+    "top_values": {
+     "3899449": 1,
+     "3984218": 1,
+     "3987614": 1,
+     "3987673": 1,
+     "3990179": 1
+    }
+   },
+   "db_year": {
+    "type": "VARCHAR",
+    "null_pct": 0.0,
+    "distinct_approx": 5,
+    "values": {
+     "2021": 5293361,
+     "2018": 3678059,
+     "2020": 452638,
+     "2017": 248,
+     "2016": 28
+    }
+   }
+  }
+ }
+}
