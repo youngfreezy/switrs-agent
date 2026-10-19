@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Reject incomplete motorcycle eligibility and orphaned case bookkeeping records found during the follow-up adversarial pass.
 - Block complete fatal-crash measurements when the requested population has unknown severity. Counts, hour rankings, and period comparisons disclose conflicts with fatality counts and explicitly measure records coded fatal. Other valid counts remain answerable.
 - Use the selected snapshot's coverage in answerability checks, refusals, context, and answer footers. Updated snapshots can answer newly available years. Static catalog statistics are no longer presented as measurements of the active snapshot.
 - Reject invalid source numeric domains before conversion and reconciliation; fractional or non-binary motorcycle flags can no longer be rounded into positive observations.

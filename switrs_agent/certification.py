@@ -195,6 +195,15 @@ def prepare(toolkit, turn_id: str) -> dict:
         filters.append(f'YEAR(collision_date) = {request.year}')
         scope += f' in {request.year}'
     if request.motorcycle:
+        scope_where = ' WHERE ' + ' AND '.join(filters) + ' AND ' if filters else ' WHERE '
+        quality = b.query('SELECT COUNT(*) AS n FROM collisions' + scope_where +
+                          '(motorcycle_collision IS NULL OR motorcycle_collision NOT IN (0,1))',
+                          'unknown_motorcycle_involvement')
+        if b.count(quality, 'n'):
+            b.fact('Motorcycle involvement is missing or invalid for {value} records in the requested population.',
+                   'unknown_motorcycle_involvement', quality)
+            b.parts.append('The motorcycle collision count is unavailable; unknown involvement is not evidence of absence.')
+            return b.finish('data_quality_blocked')
         filters.append('motorcycle_collision = 1')
     if request.fatal:
         scope_where = ' WHERE ' + ' AND '.join(filters) if filters else ''

@@ -35,6 +35,8 @@ KEY_CHECKS = {
     "parties (case_id, party_number) unique": "SELECT count(*) FROM (SELECT case_id, party_number FROM parties GROUP BY 1, 2 HAVING count(*) > 1)",
     "parties without collision": "SELECT count(*) FROM parties p WHERE NOT EXISTS (SELECT 1 FROM collisions c WHERE c.case_id = p.case_id)",
     "victims without party": "SELECT count(*) FROM victims v WHERE NOT EXISTS (SELECT 1 FROM parties p WHERE p.case_id = v.case_id AND p.party_number = v.party_number)",
+    "case_ids without collision": "SELECT count(*) FROM case_ids i WHERE NOT EXISTS (SELECT 1 FROM collisions c WHERE c.case_id = i.case_id)",
+    "collisions without case_ids": "SELECT count(*) FROM collisions c WHERE NOT EXISTS (SELECT 1 FROM case_ids i WHERE i.case_id = c.case_id)",
 }
 
 
