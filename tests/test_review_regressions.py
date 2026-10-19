@@ -39,7 +39,7 @@ class FixtureDatabase:
 @pytest.fixture
 def kit(monkeypatch, tmp_path):
     monkeypatch.setattr(tools, "TRACE_DIR", tmp_path / "traces")
-    monkeypatch.setattr(tools, "load_dataset_meta", lambda: {"dataset_version": "review-fixture"})
+    monkeypatch.setattr(tools, "load_dataset_meta", lambda path=None: {"dataset_version": "review-fixture"})
     database = FixtureDatabase()
     toolkit = tools.Toolkit(db=database, session_id="review-fixture")
     yield toolkit

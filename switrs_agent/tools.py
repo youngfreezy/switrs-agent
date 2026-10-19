@@ -34,7 +34,7 @@ CHECK_LABEL = ("Certified metric and scope: the server compiled the bound questi
                "metric and rendered this answer. Unsupported question forms require clarification.")
 
 
-def load_dataset_meta() -> dict:
+def load_dataset_meta(db_path: str | os.PathLike | None = None) -> dict:
     """The reconciliation record. Tools refuse to run on a copy that has not passed it."""
     if not DATASET_META.exists():
         raise RuntimeError("data/dataset_meta.json is missing. Run scripts/reconcile.py first.")
@@ -43,7 +43,7 @@ def load_dataset_meta() -> dict:
         raise RuntimeError(f"Dataset reconciliation failed: {meta.get('problems')}")
     if meta.get("integrity_version") != INTEGRITY_VERSION:
         raise RuntimeError("Dataset record verification is missing. Run scripts/reconcile.py again.")
-    db_path = pathlib.Path(os.environ.get("SWITRS_DB", ROOT / "data" / "switrs.duckdb"))
+    db_path = pathlib.Path(db_path or os.environ.get("SWITRS_DB", ROOT / "data" / "switrs.duckdb"))
     recorded = meta.get("duckdb_file") or {}
     st = db_path.stat()
     if recorded.get("bytes") != st.st_size or recorded.get("mtime_ns") != st.st_mtime_ns:
@@ -65,7 +65,12 @@ class Toolkit:
         self.trace: list[dict] = []
         TRACE_DIR.mkdir(parents=True, exist_ok=True)
         self.trace_path = TRACE_DIR / f"{self.session_id}.jsonl"
-        self.dataset = load_dataset_meta()
+        try:
+            self.dataset = load_dataset_meta(getattr(self.db, 'path', None))
+        except Exception:
+            if db is None:
+                self.db.con.close()
+            raise
         self.turns: dict[str, dict] = {}
         self.current_turn: str | None = None
         self.request_path = request_path

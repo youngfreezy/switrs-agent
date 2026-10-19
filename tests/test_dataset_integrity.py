@@ -130,3 +130,18 @@ def test_invalid_source_cannot_be_approved_even_when_copy_contains_same_value(sn
     result = reconcile_pair(monkeypatch, source, target, meta)
     assert result['status'] == 'failed'
     assert any('invalid source' in p for p in result['problems'])
+
+
+def test_injected_database_must_match_the_manifest_not_environment(snapshot, monkeypatch):
+    from switrs_agent.db import Database
+    source, target, meta = snapshot('manifest-copy')
+    reconcile_pair(monkeypatch, source, target, meta)
+    _, other, _ = snapshot('other-copy', source_sql='UPDATE collisions SET killed_victims=0;')
+    st = target.stat()
+    os.utime(other, ns=(st.st_atime_ns, st.st_mtime_ns))
+    database = Database(other)
+    try:
+        with pytest.raises(RuntimeError, match='content digest'):
+            tools.Toolkit(db=database)
+    finally:
+        database.con.close()
