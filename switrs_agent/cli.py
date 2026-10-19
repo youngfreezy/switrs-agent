@@ -63,16 +63,20 @@ def _summary(ev: dict) -> str:
 
 def _call_line(ev: dict) -> str:
     inp, tool = ev["input"], ev["tool"]
+    if not isinstance(inp, dict):
+        return "invalid tool arguments"
     if tool == "run_sql":
-        return inp.get("purpose", "")
+        return escape(str(inp.get("purpose", "")))
     if tool == "distinct_values":
-        return f"{inp.get('table')}.{inp.get('column')}" + (f" ~ {inp['contains']!r}" if inp.get("contains") else "")
+        return escape(f"{inp.get('table')}.{inp.get('column')}" + (f" ~ {inp['contains']!r}" if inp.get("contains") else ""))
     if tool == "describe_table":
-        return inp.get("table", "")
+        return escape(str(inp.get("table", "")))
     if tool == "begin_question":
-        return f"[dim]{inp.get('answerability')}:[/dim] {str(inp.get('interpretation', ''))[:90]}"
+        return f"[dim]{escape(str(inp.get('answerability')))}:[/dim] {escape(str(inp.get('interpretation', ''))[:90])}"
     if tool == "submit_answer":
-        return f"{len(inp.get('claims', []))} claims for {inp.get('turn_id')}"
+        claims = inp.get("claims")
+        count = str(len(claims)) if isinstance(claims, list) else "invalid"
+        return escape(f"{count} claims for {inp.get('turn_id')}")
     return ""
 
 

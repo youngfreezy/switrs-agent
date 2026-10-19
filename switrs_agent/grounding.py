@@ -14,7 +14,8 @@ import re
 from dataclasses import dataclass
 
 NUM = re.compile(
-    r"(?<![\w.])(-?\d{1,3}(?:,\d{3})+(?:\.\d+)?|-?\d+(?:\.\d+)?)\s*(%|x\b|times\b|percent\b|million\b|m\b|k\b|thousand\b)?",
+    r"(?<![\w.])([+\-−]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:e[+\-]?\d+)?)"
+    r"\s*(%|x\b|times\b|percent\b|trillion\b|billion\b|million\b|m\b|k\b|thousand\b)?",
     re.IGNORECASE,
 )
 DATE = re.compile(r"\b\d{4}-\d{2}(?:-\d{2})?\b|\b\d{1,2}:\d{2}(?::\d{2})?\b")
@@ -35,8 +36,10 @@ def extract_numbers(text: str) -> list[Claim]:
     out = []
     for m in NUM.finditer(text):
         raw, unit = m.group(1), (m.group(2) or "").lower()
-        value = float(raw.replace(",", ""))
-        decimals = len(raw.split(".")[1]) if "." in raw else 0
+        raw_value = raw.replace(",", "").replace("−", "-").lower()
+        value = float(raw_value)
+        mantissa, _, exponent = raw_value.partition("e")
+        decimals = (len(mantissa.split(".")[1]) if "." in mantissa else 0) - int(exponent or 0)
         kind = "plain"
         if unit in ("%", "percent"):
             kind = "percent"
@@ -45,6 +48,10 @@ def extract_numbers(text: str) -> list[Claim]:
         elif unit in ("million", "m"):
             value *= 1_000_000
             decimals -= 6
+        elif unit in ("billion", "trillion"):
+            scale = 9 if unit == "billion" else 12
+            value *= 10 ** scale
+            decimals -= scale
         elif unit in ("k", "thousand"):
             value *= 1_000
             decimals -= 3

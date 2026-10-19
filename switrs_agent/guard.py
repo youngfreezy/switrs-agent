@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 import sqlglot
 from sqlglot import exp
+from sqlglot.optimizer.scope import traverse_scope
 
 BLOCKED_FUNCTIONS = {
     "read_csv", "read_csv_auto", "read_parquet", "read_json", "read_json_auto", "read_text",
@@ -65,7 +66,6 @@ def check(sql: str, schema: dict[str, dict[str, str]]) -> GuardReport:
     cte_names = {c.alias_or_name.lower() for c in tree.find_all(exp.CTE)}
     known_tables = {t.lower() for t in schema}
     tables: set[str] = set()
-    alias_to_table: dict[str, str] = {}
     for t in tree.find_all(exp.Table):
         if isinstance(t.this, exp.Func) or not t.name:
             raise GuardError("Table functions are not allowed. Query the tables directly.")
@@ -77,15 +77,22 @@ def check(sql: str, schema: dict[str, dict[str, str]]) -> GuardReport:
             raise GuardError(f"Unknown table '{t.name}'." + (f" Did you mean '{hint[0]}'?" if hint else "")
                              + f" Tables: {', '.join(sorted(known_tables))}.")
         tables.add(name)
-        alias_to_table[(t.alias or t.name).lower()] = name
 
     all_columns = {c.lower(): tbl for tbl, cols in schema.items() for c in cols}
     defined_aliases = {a.alias.lower() for a in tree.find_all(exp.Alias) if a.alias}
     for cte in tree.find_all(exp.CTE):
         defined_aliases.update(c.name.lower() for c in cte.find_all(exp.TableAlias) for c in c.columns)
-    for sub in tree.find_all(exp.Subquery):
-        if sub.alias:
-            alias_to_table.setdefault(sub.alias.lower(), "")
+    # Alias names are local to a SELECT; nested scopes may reuse them.
+    scopes = {id(scope.expression): scope for scope in traverse_scope(tree)}
+
+    def column_target(col):
+        scope = scopes.get(id(col.find_ancestor(exp.Select)))
+        while scope is not None:
+            source = {a.lower(): value for a, value in scope.sources.items()}.get(col.table.lower())
+            if source is not None:
+                return source.name.lower() if isinstance(source, exp.Table) else ""
+            scope = scope.parent
+        return None
 
     columns: set[str] = set()
     for col in tree.find_all(exp.Column):
@@ -93,7 +100,7 @@ def check(sql: str, schema: dict[str, dict[str, str]]) -> GuardReport:
         if not name or isinstance(col.this, exp.Star):
             continue
         qualifier = col.table.lower() if col.table else ""
-        target = alias_to_table.get(qualifier) if qualifier else None
+        target = column_target(col) if qualifier else None
         if qualifier and target is None and qualifier not in cte_names:
             raise GuardError(f"Unknown table alias '{col.table}' in '{col.sql()}'.")
         if target:  # qualified by a real table: the column must exist on that table
@@ -149,6 +156,8 @@ class _Relation:
     # Only projections/filters of one base table preserve its declared join keys.
     base: str | None = None
     multiplied: list[bool] = field(default_factory=list)
+    collision_values: list[bool] = field(default_factory=list)
+    fanout_rows: bool = False
 
     def column(self, name: str) -> tuple[bool, tuple[str, str] | None]:
         matches = [i for i, n in enumerate(self.names) if n == name.lower()]
@@ -156,6 +165,9 @@ class _Relation:
             return False, None
         i = matches[0]
         return self.derived[i], self.origins[i]
+
+    def involves_collision(self, name: str) -> bool:
+        return any(flag for n, flag in zip(self.names, self.collision_values) if n == name.lower())
 
     def is_multiplied(self, name: str) -> bool:
         return any(flag for n, flag in zip(self.names, self.multiplied) if n == name.lower())
@@ -187,7 +199,9 @@ def _analyze(tree: exp.Expression, schema: dict):
                 a, b = branches
                 info = _Relation(a.names, [x and y for x, y in zip(a.derived, b.derived)],
                                  [None] * len(a.names), a.has_rows or b.has_rows,
-                                 multiplied=[x or y for x, y in zip(a.multiplied, b.multiplied)])
+                                 multiplied=[x or y for x, y in zip(a.multiplied, b.multiplied)],
+                                 collision_values=[x or y for x, y in zip(a.collision_values, b.collision_values)],
+                                 fanout_rows=a.fanout_rows or b.fanout_rows)
             elif isinstance(node, exp.Select):
                 sources = {}
                 for alias, (_, source) in scope.selected_sources.items():
@@ -195,7 +209,8 @@ def _analyze(tree: exp.Expression, schema: dict):
                         name = source.name.lower()
                         names = [c.lower() for c in schema[name]]
                         sources[alias.lower()] = _Relation(names, [True] * len(names),
-                                                           [(name, c) for c in names], True, name, [False] * len(names))
+                                                           [(name, c) for c in names], True, name, [False] * len(names),
+                                                           [name == "collisions"] * len(names))
                     elif isinstance(source, Scope) and id(source) in relations:
                         sources[alias.lower()] = relations[id(source)]
                     else:
@@ -207,50 +222,57 @@ def _analyze(tree: exp.Expression, schema: dict):
                     source = sources.get(col.table.lower())
                     return source.column(col.name) if source else (False, None)
 
-                def derived(expression):
-                    for sub in expression.find_all(exp.Subquery):
-                        inner = by_expression.get(id(sub.this))
-                        if inner and any(inner.derived):
-                            return True
-                    for col in expression.find_all(exp.Column):
-                        if col.find_ancestor(exp.Select) is node and column_info(col)[0]:
-                            return True
-                    for count in expression.find_all(exp.Count):
-                        if count.find_ancestor(exp.Select) is node and not isinstance(count.this, exp.Null):
-                            if has_rows:
-                                return True
-                    return False
+                bases = {source.base for source in sources.values()}
+                fanout_rows = (("collisions" in bases and bool(bases & PERSON_TABLES))
+                               or any(source.fanout_rows for source in sources.values()))
 
-                names, flags, origins, multiplied = [], [], [], []
+                def value_nodes(expression):
+                    # A scalar's output is one value. Its nested filters are not output lineage.
+                    return expression.walk(prune=lambda n: isinstance(n, exp.Subquery))
+
+                names, flags, origins, multiplied, collision_values = [], [], [], [], []
                 for projection in node.expressions:
                     expression = projection.unalias()
                     if isinstance(expression, exp.Star) or (isinstance(expression, exp.Column) and expression.is_star):
                         raise GuardError("Cannot expand this wildcard. Select explicit columns.")
-                    names.append(projection.alias_or_name.lower())
-                    flags.append(derived(expression))
-                    origins.append(column_info(expression)[1] if isinstance(expression, exp.Column) else None)
-                    duplicate = False
-                    for col in expression.find_all(exp.Column):
-                        if col.find_ancestor(exp.Select) is not node:
-                            continue
-                        source = sources.get(col.table.lower())
-                        if source:
-                            origin = source.column(col.name)[1]
-                            duplicate |= source.is_multiplied(col.name)
-                            duplicate |= bool(node.args.get("joins") and origin and origin[0] == "collisions"
-                                              and any(r.base in PERSON_TABLES for r in sources.values()))
+                    is_derived = collision_value = duplicate = False
+                    for value_node in value_nodes(expression):
+                        if isinstance(value_node, exp.Subquery):
+                            inner = by_expression.get(id(value_node.this))
+                            if inner:
+                                is_derived |= any(inner.derived)
+                                collision_value |= any(inner.collision_values)
+                                duplicate |= any(inner.multiplied)
+                        elif isinstance(value_node, exp.Column):
+                            source = sources.get(value_node.table.lower())
+                            if source:
+                                is_derived |= source.column(value_node.name)[0]
+                                collision_value |= source.involves_collision(value_node.name)
+                                duplicate |= source.is_multiplied(value_node.name)
+                        elif isinstance(value_node, exp.Count) and not isinstance(value_node.this, exp.Null):
+                            is_derived |= has_rows
+                            collision_value |= "collisions" in bases
+                    duplicate |= fanout_rows and collision_value
                     # Only an ungrouped, non-window aggregate guarantees a single row.
                     # Windows retain rows; person-level groups can still repeat a crash.
                     if not node.args.get("group") and any(
                             a.find_ancestor(exp.Select) is node and a.find_ancestor(exp.Window) is None
                             for a in expression.find_all(exp.AggFunc)):
                         duplicate = False
+                    names.append(projection.alias_or_name.lower())
+                    flags.append(is_derived)
+                    origins.append(column_info(expression)[1] if isinstance(expression, exp.Column) else None)
                     multiplied.append(duplicate)
+                    collision_values.append(collision_value)
+                if not node.args.get("group") and any(
+                        a.find_ancestor(exp.Select) is node and a.find_ancestor(exp.Window) is None
+                        for a in node.find_all(exp.AggFunc)):
+                    fanout_rows = False
                 row_preserving = (len(sources) == 1 and not node.args.get("joins")
                                   and not node.args.get("group") and not node.args.get("distinct")
                                   and not any(a.find_ancestor(exp.Select) is node for a in node.find_all(exp.AggFunc)))
                 base = next(iter(sources.values())).base if row_preserving else None
-                info = _Relation(names, flags, origins, has_rows, base, multiplied)
+                info = _Relation(names, flags, origins, has_rows, base, multiplied, collision_values, fanout_rows)
             else:
                 raise GuardError("Unsupported query shape for evidence. Use SELECT from the recorded tables.")
             relations[id(scope)] = info
@@ -377,7 +399,8 @@ def _lint_fanout(tree: exp.Expression, report: GuardReport, sources_by_select: d
                         "so each crash is counted once per person. Filter people with WHERE EXISTS (...) instead. "
                         "SUM(DISTINCT ...) is not a fix.")
         for count in sel.find_all(exp.Count):
-            if direct_fanout and count.find_ancestor(exp.Select) is sel and not isinstance(count.this, exp.Distinct):
+            inherited_rows = any(source.fanout_rows for source in sources_by_select[id(sel)].values())
+            if (direct_fanout or inherited_rows) and count.find_ancestor(exp.Select) is sel and not isinstance(count.this, exp.Distinct):
                 report.warnings.append(
                     "fan-out: this query joins collisions to parties/victims and uses COUNT without DISTINCT. "
                     "That counts people, not crashes. To count crashes with at least one matching person, use "

@@ -9,6 +9,7 @@ show that a query measures what the question asks; that is what the query plans 
 
 from __future__ import annotations
 
+import math
 import re
 
 from .grounding import NUM, extract_numbers
@@ -25,6 +26,33 @@ COUNT_NOUN = re.compile(r"^\s*(crashes|collisions|people|persons|deaths|drivers|
 
 class ClaimError(ValueError):
     pass
+
+
+def _validate_claim(claim) -> list[str]:
+    if not isinstance(claim, dict):
+        return ["Each claim must be an object."]
+    errors = []
+    for field in ("text", "metric", "population"):
+        if not isinstance(claim.get(field), str) or not claim[field].strip():
+            errors.append(f"Claim '{field}' must be a nonempty string.")
+    if claim.get("op", "value") not in OPS:
+        errors.append(f"Claim op must be one of {OPS}.")
+    cells = claim.get("cells")
+    if not isinstance(cells, list):
+        errors.append("Claim cells must be a list of cell references.")
+    else:
+        for cell in cells:
+            if (not isinstance(cell, dict)
+                    or not isinstance(cell.get("query_id"), str)
+                    or not isinstance(cell.get("column"), str)
+                    or type(cell.get("row")) is not int):
+                errors.append("Each cell needs string query_id and column fields and an integer row.")
+    entity = claim.get("entity")
+    if entity is not None and not (
+            isinstance(entity, str) and entity.strip()
+            or isinstance(entity, list) and entity and all(isinstance(e, str) and e.strip() for e in entity)):
+        errors.append("Entity must be a nonempty string or a list of nonempty strings.")
+    return errors
 
 
 def _cell(queries: dict, turn_id: str, ref: dict):
@@ -55,6 +83,8 @@ def _cell(queries: dict, turn_id: str, ref: dict):
             v = float(v)
         except (TypeError, ValueError):
             raise ClaimError(f"{qid} row {row} column {col!r} is not numeric ({v!r})") from None
+    if not math.isfinite(float(v)):
+        raise ClaimError(f"{qid}.{col} is not a finite number")
     return float(v), q["rows"][row], q
 
 
@@ -104,7 +134,9 @@ def _numbers(text: str):
 
 
 def check_claim(claim: dict, queries: dict, turn_id: str, sentence: str = "") -> tuple[float | None, list[str]]:
-    errs: list[str] = []
+    errs = _validate_claim(claim)
+    if errs:
+        return None, errs
     text = claim.get("text", "")
     for field in ("metric", "population"):
         if not str(claim.get(field, "")).strip():
@@ -117,11 +149,19 @@ def check_claim(claim: dict, queries: dict, turn_id: str, sentence: str = "") ->
     if len(shown) != 1:
         return value, errs + [f"claim {text[:60]!r}: use one numeric assertion per claim; found {len(shown)}"]
     op = claim.get("op", "value")
-    up, down = bool(UP.search(text)), bool(DOWN.search(text))
+    # A numeric-only claim span still asserts the direction in its enclosing clause.
+    context = sentence or text
+    up, down = bool(UP.search(context)), bool(DOWN.search(context))
     matched = False
     for c in shown:
+        if not math.isfinite(value) or not math.isfinite(c.value) or not -300 <= c.decimals <= 300:
+            errs.append("Claim values must be finite and use a supported precision.")
+            continue
         tol = max(0.5 * 10 ** (-c.decimals), 1e-9) + 1e-9
         if op in ("percent_of", "percent_change") and c.kind != "percent":
+            continue
+        if op == "ratio" and c.kind == "percent":
+            errs.append("A ratio is not a percentage. Use percent_of to display the percentage.")
             continue
         if abs(c.value - value) <= tol:
             matched = True
@@ -173,11 +213,17 @@ def _norm(s: str) -> str:
 
 
 def check_answer(answer: str, claims: list[dict], queries: dict, turn_id: str, question: str = "") -> dict:
+    if not isinstance(answer, str) or not isinstance(claims, list):
+        return {"ok": False, "errors": ["Answer must be a string and claims must be a list."], "claims": []}
     errors: list[str] = []
     checked = []
     norm_answer = _norm(answer)
     spans = []
     for claim in claims:
+        malformed = _validate_claim(claim)
+        if malformed:
+            errors.extend(malformed)
+            continue
         text = _norm(claim.get("text", ""))
         start = norm_answer.find(text) if text else -1
         value, errs = check_claim(claim, queries, turn_id, _sentence_around(norm_answer, start, len(text)))

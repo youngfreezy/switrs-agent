@@ -100,7 +100,7 @@ questions:
   - id: q08_fatal_hour
     question: At what hour of the day do the most fatal crashes happen?
     checks:
-      - {type: text, name: names 6 PM, any: ["\\b18(:00)?\\b", "6 ?(pm|p\\.m\\.)", "6:00 ?pm", "6 (to|-) ?7 ?pm", "18:00"]}
+      - {type: text, name: names 6 PM, any: ["\\b18(:00)?\\b", "\\b6 ?(pm|p\\.m\\.)", "6:00 ?pm", "\\b6 (to|-) ?7 ?pm", "18:00", "\\bsix ?(pm|p\\.m\\.|o.clock)", "hour 18", "6 in the evening"]}
       - type: number
         name: fatal crashes in that hour
         sql: "SELECT count(*) FROM collisions WHERE collision_severity = 'fatal' AND hour(collision_time) = 18"

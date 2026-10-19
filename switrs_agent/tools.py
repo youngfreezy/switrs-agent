@@ -214,10 +214,12 @@ class Toolkit:
         return result
 
     def _submit(self, turn_id: str, answer: str, claims_in: list[dict]) -> dict:
+        if not isinstance(turn_id, str):
+            return {"ok": False, "errors": ["turn_id must be a string returned by begin_question."]}
         turn = self.turns.get(turn_id)
         if not turn:
             return {"ok": False, "errors": [f"Unknown turn_id {turn_id!r}. Call begin_question first."]}
-        check = claims.check_answer(answer, claims_in or [], self.queries, turn_id, turn["question"])
+        check = claims.check_answer(answer, claims_in, self.queries, turn_id, turn["question"])
         if not check["ok"]:
             return {"ok": False, "errors": check["errors"],
                     "hint": "Fix each error (bind every number to a claim, match entity and direction) and submit again."}
