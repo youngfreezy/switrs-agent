@@ -82,3 +82,26 @@ def test_unchanged_reconciled_copy_still_loads(snapshot, monkeypatch):
     source, target, meta = snapshot('valid')
     expected = reconcile_pair(monkeypatch, source, target, meta)
     assert tools.load_dataset_meta() == expected
+
+
+@pytest.mark.parametrize('copy_sql', [
+    "UPDATE collisions SET county_location=CASE WHEN case_id='A' THEN 'los angeles' WHEN case_id='C' THEN 'orange' ELSE county_location END",
+    "UPDATE collisions SET motorcycle_collision=1-motorcycle_collision",
+    "UPDATE victims SET party_number=1, case_id=CASE WHEN id=1 THEN 'B' ELSE case_id END",
+])
+def test_r1_changed_values_cannot_hide_behind_matching_marginals(snapshot, monkeypatch, copy_sql):
+    source, target, meta = snapshot('permuted', copy_sql=copy_sql)
+    result = reconcile_pair(monkeypatch, source, target, meta)
+    assert result['status'] == 'failed'
+    assert any('record' in p for p in result['problems'])
+    with pytest.raises(RuntimeError, match='reconciliation failed'):
+        tools.load_dataset_meta()
+
+
+def test_record_order_does_not_change_reconciliation(snapshot, monkeypatch):
+    source, target, meta = snapshot('reordered', copy_sql='''
+        CREATE TABLE reordered AS SELECT * FROM collisions ORDER BY case_id DESC;
+        DROP TABLE collisions;
+        ALTER TABLE reordered RENAME TO collisions;
+    ''')
+    assert reconcile_pair(monkeypatch, source, target, meta)['status'] == 'ok'

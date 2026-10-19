@@ -41,6 +41,8 @@ def load_dataset_meta() -> dict:
     meta = json.loads(DATASET_META.read_text())
     if meta.get("status") != "ok":
         raise RuntimeError(f"Dataset reconciliation failed: {meta.get('problems')}")
+    if meta.get("integrity_version") != 1:
+        raise RuntimeError("Dataset record verification is missing. Run scripts/reconcile.py again.")
     db_path = pathlib.Path(os.environ.get("SWITRS_DB", ROOT / "data" / "switrs.duckdb"))
     recorded = meta.get("duckdb_file") or {}
     st = db_path.stat()

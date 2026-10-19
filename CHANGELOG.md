@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Compare complete source and analytical records by key, rejecting changed associations, missing/duplicate keys, and altered values even when marginal totals match.
 - Verify the analytical file's SHA-256 before serving answers, including when a replacement preserves file size and modification time. Certificates include the analytical digest. Run reconciliation again to upgrade older manifests.
 
 ## 0.2.0

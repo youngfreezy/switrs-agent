@@ -17,7 +17,7 @@ import time
 
 import duckdb
 
-from switrs_agent.dataset_integrity import sha256
+from switrs_agent.dataset_integrity import compare_records, sha256
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TRANSFORM_VERSION = "build_duckdb v1: TRY_CAST INT->BIGINT, REAL->DOUBLE, dates->DATE, time->TIME, ''->NULL"
@@ -110,7 +110,15 @@ def main() -> None:
             ok = a == b
             aggregates[name] = {"match": ok, "diff": {k: [a.get(k), b.get(k)] for k in set(a) | set(b) if a.get(k) != b.get(k)}}
 
+    print("comparing complete records by key ...", flush=True)
+    records = {}
+    for table in TABLES:
+        try:
+            records[table] = compare_records(src, dst, table)
+        except (ValueError, ArithmeticError) as exc:
+            records[table] = {"match": False, "error": str(exc)}
     problems = assess(columns_report, keys, aggregates)
+    problems += [f"record comparison failed: {table}" for table, result in records.items() if not result['match']]
     lossy = {k: v for k, v in columns_report.items() if v["values_lost_to_cast"] > 0}
     rows = {t: int(dst.execute(f"SELECT count(*) FROM {t}").fetchone()[0]) for t in TABLES}
     coverage = dst.execute("SELECT min(collision_date), max(collision_date) FROM collisions").fetchone()
@@ -125,6 +133,8 @@ def main() -> None:
         "rows": rows,
         "coverage": {"min_collision_date": str(coverage[0]), "max_collision_date": str(coverage[1])},
         "key_checks": keys,
+        "record_comparison": records,
+        "integrity_version": 1,
         "aggregates": aggregates,
         "columns_with_cast_losses": lossy,
         "problems": problems,
