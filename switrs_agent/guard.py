@@ -396,7 +396,11 @@ def _lint_fanout(tree: exp.Expression, report: GuardReport, sources_by_select: d
         scope = {alias: source.base for alias, source in sources_by_select[id(sel)].items()}
         tables = set(scope.values())
         direct_fanout = "collisions" in tables and bool(tables & PERSON_TABLES)
-        for agg in sel.find_all(exp.Sum, exp.Avg):
+        for agg in sel.find_all(exp.AggFunc):
+            # Collections retain duplicated values too: list_sum(list(measure)) must
+            # obey the same grain restriction as SUM(measure).
+            if isinstance(agg, (exp.Count, exp.Min, exp.Max)):
+                continue
             if agg.find_ancestor(exp.Select) is not sel:
                 continue
             for col in agg.find_all(exp.Column):

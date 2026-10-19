@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import pathlib
 
 from mcp.server.mcpserver import MCPServer
 
@@ -39,6 +40,10 @@ Workflow for every user question:
    0-based index in that result), the entity when the row has a label, the metric, and the
    population. For a comparison across rows, give entity as a list, one per cell. Every number
    in the answer must belong to an atomic claim containing exactly one numeric assertion.
+   Write quantities in decimal digits. Percentages MUST use percent_of or percent_change on
+   separate numerator and denominator cells, even if SQL also computed the percentage.
+   Times comparisons MUST use ratio. Date/time assertions are not supported in certified prose;
+   use contextual years or let the user inspect the result table. Do not invent row labels in SQL.
    Counts mentioned in the question still need evidence. Calendar years may be context labels
    (for example, 'in 2020'). Start each labelled assertion clause with its exact entity and a
    simple predicate: 'Los Angeles had 2 collisions.' Use separate claims for separate values.
@@ -52,7 +57,9 @@ Workflow for every user question:
 
 
 def build(toolkit: Toolkit | None = None) -> MCPServer:
-    kit = toolkit or Toolkit(session_id=os.environ.get("SWITRS_SESSION"))
+    request_path = os.environ.get("SWITRS_REQUEST_FILE")
+    kit = toolkit or Toolkit(session_id=os.environ.get("SWITRS_SESSION"),
+                             request_path=pathlib.Path(request_path) if request_path else None)
     server = MCPServer(name="switrs", instructions=INSTRUCTIONS)
 
     @server.tool()

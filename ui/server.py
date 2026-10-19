@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from switrs_agent.claude_auth import billing_status, claude_env
+from switrs_agent.request_binding import matches_question, write_request
 from ui.store import JsonChatStore
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -41,11 +42,13 @@ class ChatIn(BaseModel):
     chat_id: str | None = None
 
 
-def mcp_config_for(chat_id: str) -> pathlib.Path:
+def mcp_config_for(chat_id: str, question: str) -> pathlib.Path:
+    request_path = ROOT / "outputs" / "ui" / f"request-{chat_id}.json"
+    write_request(request_path, question)
     cfg = {"mcpServers": {"switrs": {
         "command": "uv",
         "args": ["run", "--directory", str(ROOT), "python", "-m", "switrs_agent.mcp_server"],
-        "env": {"SWITRS_SESSION": f"ui-{chat_id}"},
+        "env": {"SWITRS_SESSION": f"ui-{chat_id}", "SWITRS_REQUEST_FILE": str(request_path)},
     }}}
     path = ROOT / "outputs" / "ui" / f"mcp-{chat_id}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -56,7 +59,7 @@ def mcp_config_for(chat_id: str) -> pathlib.Path:
 def claude_cmd(chat: dict, message: str) -> list[str]:
     cmd = ["claude", "-p", "--model", MODEL, "--output-format", "stream-json", "--verbose",
            "--setting-sources", "project", "--tools", "", "--strict-mcp-config",
-           "--mcp-config", str(mcp_config_for(chat["id"])), "--allowedTools", "mcp__switrs__*",
+           "--mcp-config", str(mcp_config_for(chat["id"], message)), "--allowedTools", "mcp__switrs__*",
            "--max-budget-usd", BUDGET_USD]
     if chat.get("claude_session_id"):
         cmd += ["--resume", chat["claude_session_id"]]
@@ -161,7 +164,7 @@ async def chat(body: ChatIn, request: Request):
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, limit=16 * 1024 * 1024)
             events, started = [], time.time()
             tool_names: dict[str, str] = {}
-            certified = False
+            certified = None
             try:
                 async for raw in proc.stdout:
                     if await request.is_disconnected():
@@ -180,17 +183,13 @@ async def chat(body: ChatIn, request: Request):
                         yield sse(ui_ev)
                         # Publication gate: only a final_answer that passed submit_answer is shown as the answer.
                         r = ui_ev.get("result")
-                        if (ui_ev["kind"] == "tool_result" and tool_names.get(ui_ev["id"]) == "submit_answer"
-                                and isinstance(r, dict) and r.get("ok") and r.get("final_answer")):
-                            certified = True
-                            cert = {"kind": "certified", "final_answer": r["final_answer"]}
-                            events.append(cert)
-                            yield sse(cert)
+                        if ui_ev["kind"] == "tool_result" and tool_names.get(ui_ev["id"]) == "submit_answer":
+                            certified = (r["final_answer"] if isinstance(r, dict) and r.get("ok")
+                                         and r.get("final_answer") and matches_question(r, message) else None)
                 await proc.wait()
-                if not certified:
-                    ev = {"kind": "uncertified"}
-                    events.append(ev)
-                    yield sse(ev)
+                ev = {"kind": "certified", "final_answer": certified} if certified else {"kind": "uncertified"}
+                events.append(ev)
+                yield sse(ev)
                 if proc.returncode and not any(e["kind"] == "done" for e in events):
                     err = (await proc.stderr.read()).decode()[-800:]
                     ev = {"kind": "done", "error": True, "result": err or f"claude exited {proc.returncode}"}

@@ -30,6 +30,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from switrs_agent.claude_auth import billing_status, claude_env  # noqa: E402
 from switrs_agent.grounding import extract_numbers  # noqa: E402
+from switrs_agent.request_binding import write_request  # noqa: E402
 
 GOLDEN = ROOT / "evals" / "golden.yaml"
 DB = os.environ.get("SWITRS_DB", str(ROOT / "data" / "switrs.duckdb"))
@@ -42,11 +43,13 @@ CLAUDE_CMD = (
 )
 
 
-def write_mcp_config(run_dir: pathlib.Path, session: str) -> pathlib.Path:
+def write_mcp_config(run_dir: pathlib.Path, session: str, question: str) -> pathlib.Path:
+    request_path = run_dir / f"request-{session}.json"
+    write_request(request_path, question)
     cfg = {"mcpServers": {"switrs": {
         "command": "uv",
         "args": ["run", "--directory", str(ROOT), "python", "-m", "switrs_agent.mcp_server"],
-        "env": {"SWITRS_SESSION": session},
+        "env": {"SWITRS_SESSION": session, "SWITRS_REQUEST_FILE": str(request_path)},
     }}}
     path = run_dir / f"mcp-{session}.json"
     path.write_text(json.dumps(cfg))
@@ -61,7 +64,27 @@ def expected_values(con, check: dict) -> list[float]:
 UP = re.compile(r"\b(increas\w*|rose|rise|rising|higher|more|grew|growth|jump\w*|climb\w*|up)\b", re.I)
 DOWN = re.compile(r"\b(decreas\w*|fell|fall|falling|lower|fewer|less|drop\w*|declin\w*|reduc\w*|down)\b", re.I)
 ROAD = re.compile(r"\b(I|US|SR|CA|Route|Highway|Hwy|Interstate)[- ]?\d+\b", re.I)
-COUNT_NOUN = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?\s+(crashes|collisions|accidents|people|deaths|fatalities|injuries|cases)\b", re.I)
+COUNT_WORD = (
+    r"zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|"
+    r"fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|"
+    r"sixty|seventy|eighty|ninety|hundred|thousand|million|billion"
+)
+COUNT_NOUN = re.compile(
+    rf"(?<![\w.])(?:\d[\d,]*(?:\.\d+)?|(?:{COUNT_WORD})(?:[ -]+(?:{COUNT_WORD}|and))*)"
+    r"\s+(crashes|collisions|accidents|people|deaths|fatalities|injuries|cases)\b", re.I,
+)
+SERVER_APPENDIX = re.compile(r"\n\n\*\*(?:Not in the data|Caveats|Evidence)\*\*\n")
+# Targeted smoke checks for the refusal questions, not a semantic proof.
+PROOF = re.compile(r"\b(proves?|disproves?|establish(?:es)?|demonstrates?|confirms?)\b", re.I)
+NEGATED_PROOF = re.compile(
+    r"\b(?:cannot|can['’]?t|does not|doesn['’]?t|do not|don['’]?t|not|never)\s+"
+    r"(?:\w+\s+){0,2}$", re.I,
+)
+BIAS_VERDICT = re.compile(
+    r"\b(?:police|cops?|officers?)\s+(?:(?:definitely|clearly|inherently)\s+)?"
+    r"(?:discriminate\w*|(?:are|is|aren['’]?t|isn['’]?t)\s+(?:not\s+)?"
+    r"(?:(?:definitely|clearly|inherently)\s+)?(?:biased|unbiased))\b", re.I,
+)
 EXPECTED = ROOT / "evals" / "expected_v1.json"
 
 
@@ -88,7 +111,11 @@ def number_matches(answer: str, targets: list[float], near: str | None = None) -
     return False
 
 
-def grade(q: dict, answer: str, con) -> dict:
+def grade(q: dict, answer: str, con, *, rendered: bool = True) -> dict:
+    # Traces supply the submitted body: model-written headings must not hide assertions.
+    # Imported rendered answers have no separate body field.
+    if rendered:
+        answer = SERVER_APPENDIX.split(answer, maxsplit=1)[0]
     results = []
     low = answer.lower()
     for check in q["checks"]:
@@ -100,6 +127,16 @@ def grade(q: dict, answer: str, con) -> dict:
             targets = expected_values(con, check)
             results.append({"check": name, "ok": number_matches(answer, targets, check.get("near")),
                             "expected": [round(t, 3) for t in targets]})
+    if q["id"] in {"q03_safety_equipment", "q05_red_sports_car_bias", "q11_belt_death_share"}:
+        verdicts = []
+        for clause in re.split(r"[.!?;\n]|\bbut\b|\bhowever\b", answer, flags=re.I):
+            proof = any(not NEGATED_PROOF.search(clause[:m.start()]) for m in PROOF.finditer(clause))
+            bias = q["id"] == "q05_red_sports_car_bias" and any(
+                not NEGATED_PROOF.search(clause[:m.start()]) for m in BIAS_VERDICT.finditer(clause)
+            )
+            if proof or bias:
+                verdicts.append(clause.strip())
+        results.append({"check": "no unsupported verdict", "ok": not verdicts, "found": verdicts})
     if q.get("forbid_counts"):
         stray = [m.group(0) for m in COUNT_NOUN.finditer(ROAD.sub(" ", answer))]
         results.append({"check": "no invented counts", "ok": not stray, "found": stray})
@@ -107,7 +144,7 @@ def grade(q: dict, answer: str, con) -> dict:
 
 
 def certified_answer(session: str) -> str | None:
-    """The final_answer of the last submit_answer call that passed, from the session trace."""
+    """Submitted body only, and only when the latest submission passed certification."""
     path = ROOT / "outputs" / "traces" / f"{session}.jsonl"
     if not path.exists():
         return None
@@ -116,8 +153,10 @@ def certified_answer(session: str) -> str | None:
         if not line.strip():
             continue
         c = json.loads(line)
-        if c["tool"] == "submit_answer" and isinstance(c["result"], dict) and c["result"].get("ok"):
-            final = c["result"].get("final_answer")
+        if c["tool"] == "submit_answer":
+            result = c.get("result")
+            body = c.get("args", {}).get("answer")
+            final = body if isinstance(result, dict) and result.get("ok") and isinstance(body, str) else None
     return final
 
 
@@ -223,7 +262,7 @@ def main() -> None:
         EVAL_CWD.mkdir(exist_ok=True)
         for q in golden:
             session = f"eval-{run_dir.name}-{q['id']}"
-            mcp_config = write_mcp_config(run_dir, session)
+            mcp_config = write_mcp_config(run_dir, session, q["question"])
             cmd = (template.replace("{question}", shlex.quote(q["question"]))
                    .replace("{session}", session).replace("{mcp_config}", shlex.quote(str(mcp_config))))
             env = claude_env({"SWITRS_SESSION": session})
@@ -263,7 +302,7 @@ def main() -> None:
             text = final or a["answer"]
         else:
             g_certified = None  # external harness: certification unknown
-        g = grade(q, text, con)
+        g = grade(q, text, con, rendered=not bool(a.get("session")))
         g["certified"] = g_certified
         if g_certified is False:
             g["pass"] = False

@@ -16,6 +16,7 @@ def kit():
 
 
 def open_turn(kit, q="Which county has the most collisions?", status="answerable"):
+    kit.bind_question(q)
     r = kit.begin_question(q, status, "collisions by county, all years")
     assert "turn_id" in r, r
     return r["turn_id"]
@@ -120,6 +121,7 @@ def test_bad_joins_are_rejected(kit, sql, needle):
 
 def test_answerability_contradiction_is_rejected(kit):
     q = "Is there data showing police are biased against red sports cars?"
+    kit.bind_question(q)
     r = kit.begin_question(q, "answerable", "at-fault share by make")
     assert "error" in r and "vehicle_color" in r["detected"]
     ok = kit.begin_question(q, "partially_available", "color is not recorded; describe at-fault share by make only")
@@ -154,6 +156,7 @@ def test_cte_wrapped_literal_cannot_be_cited(kit):
 
 
 def test_final_answer_always_carries_required_caveats(kit):
+    kit.bind_question("Which county is safest?")
     t = kit.begin_question("Which county is safest?", "descriptive_only", "crash counts by county")["turn_id"]
     q = county_query(kit)
     answer = "Los Angeles had 2,851,925 collisions, the most of any county."

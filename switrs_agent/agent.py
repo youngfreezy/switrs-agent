@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import pathlib
 import shutil
 import sys
 import tempfile
@@ -34,6 +35,7 @@ from mcp import Client
 
 from . import mcp_server
 from .tools import Toolkit
+from .request_binding import write_request
 
 MODEL = os.environ.get("SWITRS_MODEL", "claude-opus-5-5")
 logging.getLogger("claude_agent_sdk").setLevel(logging.WARNING)
@@ -85,7 +87,8 @@ class ApiAgent:
 
     async def _connect(self) -> None:
         self._stack = AsyncExitStack()
-        self.mcp = await self._stack.enter_async_context(Client(mcp_server.build(Toolkit(session_id=self.session_id))))
+        self.toolkit = Toolkit(session_id=self.session_id)
+        self.mcp = await self._stack.enter_async_context(Client(mcp_server.build(self.toolkit)))
         listed = await self.mcp.list_tools()
         self.system = self.mcp.instructions or ""
         self.tools = [{"name": t.name, "description": t.description or "", "input_schema": t.input_schema}
@@ -99,6 +102,7 @@ class ApiAgent:
 
         if self.mcp is None:
             await self._connect()
+        self.toolkit.bind_question(question)
         self.messages.append({"role": "user", "content": question})
         for turn in range(1, self.max_turns + 1):
             try:
@@ -159,14 +163,17 @@ class SdkAgent:
     def __init__(self, session_id: str, model: str = MODEL, max_turns: int = 30, budget_usd: float = 3.0):
         self.session_id, self.model, self.max_turns, self.budget_usd = session_id, model, max_turns, budget_usd
         self.client = None
+        self.workdir = None
         self._names: dict[str, str] = {}
 
     async def _connect(self) -> None:
         from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 
         system, tools = await server_spec()
+        self.workdir = tempfile.TemporaryDirectory(prefix="switrs-agent-")
+        self.request_path = pathlib.Path(self.workdir.name) / "request.json"
         server = {"type": "stdio", "command": sys.executable, "args": ["-m", "switrs_agent.mcp_server"],
-                  "env": {"SWITRS_SESSION": self.session_id}}
+                  "env": {"SWITRS_SESSION": self.session_id, "SWITRS_REQUEST_FILE": str(self.request_path)}}
         options = ClaudeAgentOptions(
             system_prompt=system,
             tools=[],                      # no Bash, Read, Edit, WebSearch...
@@ -177,7 +184,7 @@ class SdkAgent:
             model=self.model,
             max_turns=self.max_turns,
             max_budget_usd=self.budget_usd,
-            cwd=tempfile.mkdtemp(prefix="switrs-agent-"),
+            cwd=self.workdir.name,
             # Use the `claude` on PATH, which holds this machine's login. The SDK's bundled copy
             # does not share it. SWITRS_CLAUDE_CLI overrides.
             cli_path=os.environ.get("SWITRS_CLAUDE_CLI") or shutil.which("claude"),
@@ -191,6 +198,7 @@ class SdkAgent:
 
         if self.client is None:
             await self._connect()
+        write_request(self.request_path, question)
         await self.client.query(question)
         async for msg in self.client.receive_response():
             if isinstance(msg, AssistantMessage):
@@ -212,8 +220,12 @@ class SdkAgent:
                        "error": (msg.result or msg.subtype) if msg.is_error else None}
 
     async def close(self) -> None:
-        if self.client is not None:
-            await self.client.disconnect()
+        try:
+            if self.client is not None:
+                await self.client.disconnect()
+        finally:
+            if self.workdir is not None:
+                self.workdir.cleanup()
 
 
 def make_agent(backend: str = "auto", model: str = MODEL, session_id: str | None = None):

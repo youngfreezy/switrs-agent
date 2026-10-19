@@ -17,6 +17,7 @@ from dataclasses import asdict
 
 from . import answerability, claims, grounding, guard, semantic
 from .db import Database
+from .request_binding import new_request, read_request, same_question
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "outputs" / "answers"
@@ -47,7 +48,8 @@ def load_dataset_meta() -> dict:
 
 
 class Toolkit:
-    def __init__(self, db: Database | None = None, session_id: str | None = None):
+    def __init__(self, db: Database | None = None, session_id: str | None = None,
+                 request_path: pathlib.Path | None = None):
         self.db = db or Database()
         self.schema_cols = self.db.table_columns()
         self.queries: dict[str, dict] = {}
@@ -60,6 +62,26 @@ class Toolkit:
         self.dataset = load_dataset_meta()
         self.turns: dict[str, dict] = {}
         self.current_turn: str | None = None
+        self.request_path = request_path
+        self.request: dict | None = None
+
+    def bind_question(self, question: str) -> None:
+        """Host-only entry point for an in-process client; deliberately not an MCP tool."""
+        self.request = new_request(question)
+        self.current_turn = None
+
+    def _request(self) -> dict | None:
+        return read_request(self.request_path) if self.request_path is not None else self.request
+
+    def _binding_error(self, turn: dict) -> str | None:
+        try:
+            request = self._request()
+        except ValueError as e:
+            return str(e)
+        if request and (turn.get("request_id") != request["id"] or
+                        not same_question(turn["question"], request["question"])):
+            return "This turn does not belong to the current application request. Call begin_question with the original question."
+        return None
 
     def _log(self, tool: str, args: dict, result) -> None:
         """Append one tool call to the session trace (memory and JSONL on disk)."""
@@ -112,6 +134,15 @@ class Toolkit:
         """Open a turn for one user question. Declare answerability (answerable, ambiguous,
         descriptive_only, partially_available, unavailable) and how you read the question. The
         server checks the question for concepts the data lacks and causal or exposure wording."""
+        try:
+            request = self._request()
+            if request and not same_question(question, request["question"]):
+                raise ValueError("begin_question must use the original user question unchanged; put your interpretation in interpretation.")
+        except ValueError as e:
+            result = {"error": str(e)}
+            self._log("begin_question", {"question": question, "answerability": answerability,
+                                         "interpretation": interpretation}, result)
+            return result
         check = _answerability_check(question, answerability)
         if check["error"]:
             result = {"error": check["error"], "detected": check["detected"], "gaps": check["gaps"]}
@@ -120,6 +151,7 @@ class Toolkit:
             return result
         turn_id = f"t{len(self.turns) + 1}-{self.run_tag}"
         self.turns[turn_id] = {"question": question, "answerability": answerability, "interpretation": interpretation,
+                               "request_id": request["id"] if request else None,
                                "detected": check["detected"], "gaps": check["gaps"],
                                "required_caveats": check["required_caveats"], "queries": []}
         self.current_turn = turn_id
@@ -145,6 +177,8 @@ class Toolkit:
         if not self.current_turn:
             return {"error": "Call begin_question before running queries."}
         turn = self.turns[self.current_turn]
+        if error := self._binding_error(turn):
+            return {"error": error}
         if len(turn["queries"]) >= MAX_QUERIES_PER_TURN or self._n >= MAX_QUERIES_PER_SESSION:
             return {"error": f"Query budget reached ({MAX_QUERIES_PER_TURN} per question, {MAX_QUERIES_PER_SESSION} per session). "
                              "Answer with what you have and state what is missing."}
@@ -219,6 +253,11 @@ class Toolkit:
         turn = self.turns.get(turn_id)
         if not turn:
             return {"ok": False, "errors": [f"Unknown turn_id {turn_id!r}. Call begin_question first."]}
+        if error := self._binding_error(turn):
+            return {"ok": False, "errors": [error]}
+        if not turn.get("request_id"):
+            return {"ok": False, "errors": ["Certification requires a host request binding. Use the CLI/web app, "
+                                            "or have the host supply SWITRS_REQUEST_FILE before begin_question."]}
         check = claims.check_answer(answer, claims_in, self.queries, turn_id, turn["question"])
         if not check["ok"]:
             return {"ok": False, "errors": check["errors"],
@@ -244,6 +283,7 @@ class Toolkit:
         final = "\n\n".join(parts)
         turn["final_answer"] = final
         return {"ok": True, "final_answer": final, "claims_checked": len(check["claims"]),
+                "question": turn["question"], "turn_id": turn_id, "request_id": turn.get("request_id"),
                 "caveats": caveat_ids, "gaps": turn["gaps"], "dataset_version": self.dataset["dataset_version"]}
 
     def render_answer(self, turn_id: str) -> dict:

@@ -47,6 +47,7 @@ def kit(monkeypatch, tmp_path):
 
 
 def begin(kit, question="How many collisions?", status="answerable"):
+    kit.bind_question(question)
     opened = kit.begin_question(question, status, "Read the isolated review fixture.")
     assert "turn_id" in opened, opened
     return opened["turn_id"]
@@ -178,7 +179,7 @@ def test_cli_publishes_only_checked_final_answer(monkeypatch):
         async def ask(self, question):
             yield {"kind": "tool_call", "id": "1", "tool": "submit_answer", "input": {"claims": [], "turn_id": "t1"}}
             yield {"kind": "tool_result", "id": "1", "tool": "submit_answer", "is_error": False,
-                   "result": {"ok": True, "claims_checked": 0, "final_answer": checked}}
+                   "result": {"ok": True, "claims_checked": 0, "final_answer": checked, "question": question}}
             yield {"kind": "text", "text": "Nevada had 777 crashes.\n\n" + checked}
             yield {"kind": "done", "turns": 1, "cost_usd": 0, "session_id": "fixture", "error": None}
 

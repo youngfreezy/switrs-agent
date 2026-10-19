@@ -24,6 +24,7 @@ from rich.syntax import Syntax
 from rich.markup import escape
 from rich.table import Table
 from rich.text import Text
+from .request_binding import matches_question
 
 console = Console(highlight=False)
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -95,6 +96,11 @@ async def run_turn(agent, question: str, verbose: bool) -> dict:
                 status.update(f"[dim]{escape(ev['tool'])}...[/dim]")
             elif k == "tool_result":
                 call = calls.get(ev["id"], {"tool": ev["tool"], "input": {}})
+                if (call["tool"] == "submit_answer" and isinstance(ev["result"], dict)
+                        and ev["result"].get("ok") and not matches_question(ev["result"], question)):
+                    ev = {**ev, "result": {"ok": False, "errors": ["Certificate does not match the original user question."]}}
+                if call["tool"] == "submit_answer":
+                    final = None  # A failed revision revokes an earlier success in this turn.
                 room = max(30, console.width - 22)
                 line = _call_line(call)
                 plain = Text.from_markup(line).plain

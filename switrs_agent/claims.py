@@ -22,6 +22,10 @@ ROAD = re.compile(r"\b(I|US|SR|CA|Route|Highway|Hwy|Interstate)[- ]?\d+\b", re.I
 QUERY_ID = re.compile(r"\b[0-9a-f]{4}-q\d+\b|\bq\d+\b", re.I)
 DATE = re.compile(r"\b\d{4}-\d{2}(?:-\d{2})?\b|\b\d{1,2}:\d{2}(?::\d{2})?\b")
 COUNT_NOUN = re.compile(r"^\s*(crashes|collisions|people|persons|deaths|drivers|victims|parties|cases|fatalities|injuries|motorists)\b", re.I)
+NUMBER_WORD = re.compile(
+    r"\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|"
+    r"fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|"
+    r"sixty|seventy|eighty|ninety|hundred|thousand|million|billion|trillion|half|quarter|twice|thrice)\b", re.I)
 
 
 class ClaimError(ValueError):
@@ -77,6 +81,9 @@ def _cell(queries: dict, turn_id: str, ref: dict):
     row = ref.get("row")
     if not isinstance(row, int) or not 0 <= row < len(q["rows"]):
         raise ClaimError(f"{qid} row {row!r} is out of range (0..{len(q['rows']) - 1})")
+    for label, derived in zip(q["rows"][row], provenance):
+        if isinstance(label, str) and not re.fullmatch(r"-?[\d.,]+", label) and not derived:
+            raise ClaimError(f"{qid} contains a literal row label {label!r}; select the actual grouping column")
     v = q["rows"][row][ci]
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         try:
@@ -154,6 +161,9 @@ def check_claim(claim: dict, queries: dict, turn_id: str, sentence: str = "") ->
     op = claim.get("op", "value")
     # A numeric-only claim span still asserts the direction in its enclosing clause.
     context = sentence or text
+    if any(any("fan-out" in w for w in queries[ref["query_id"]].get("warnings", []))
+           for ref in claim["cells"]) and re.search(r"\b(crash(?:es)?|collisions?)\b", claim["metric"] + " " + context, re.I):
+        errs.append("A fan-out count cannot support a collision claim. Count DISTINCT case_id or use WHERE EXISTS.")
     up, down = bool(UP.search(context)), bool(DOWN.search(context))
     if op in ("ratio", "percent_of") and (up or down):
         errs.append("Use 'as many' or 'of' for ratios/shares; use difference or percent_change for more/fewer claims.")
@@ -170,8 +180,11 @@ def check_claim(claim: dict, queries: dict, turn_id: str, sentence: str = "") ->
         tol = max(0.5 * 10 ** (-c.decimals), 1e-9) + 1e-9
         if op in ("percent_of", "percent_change") and c.kind != "percent":
             continue
-        if op == "ratio" and c.kind == "percent":
-            errs.append("A ratio is not a percentage. Use percent_of to display the percentage.")
+        if c.kind == "percent" and op not in ("percent_of", "percent_change"):
+            errs.append("Percentages require percent_of or percent_change with numerator and denominator cells.")
+            continue
+        if c.kind == "ratio" and op != "ratio":
+            errs.append("A times comparison requires ratio with numerator and denominator cells.")
             continue
         if abs(c.value - value) <= tol:
             matched = True
@@ -233,6 +246,12 @@ def check_answer(answer: str, claims: list[dict], queries: dict, turn_id: str, q
     errors: list[str] = []
     checked = []
     norm_answer = _norm(answer)
+    # A number tokenizer cannot certify arbitrary English quantities or temporal facts.
+    # Fail closed on unsupported forms instead of treating zero parsed claims as proof.
+    if NUMBER_WORD.search(NUM.sub(" ", norm_answer)):
+        errors.append("Write quantities in decimal digits and bind them to claims; spelled-out numbers are unsupported.")
+    if DATE.search(norm_answer):
+        errors.append("Date/time assertions are not supported in certified prose. Use contextual years or show the query results.")
     if any(char.isnumeric() and not char.isdecimal() for char in norm_answer):
         errors.append("Use decimal digits for numeric assertions; fraction and other numeric glyphs are not supported.")
     spans = []
