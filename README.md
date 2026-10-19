@@ -90,7 +90,7 @@ The tools live in `switrs_agent/tools.py`. `switrs_agent/mcp_server.py` exposes 
 | `get_trace()` | Every tool call in the session, including rejected queries and retries |
 | `render_answer(turn_id)` | An HTML page for a certified answer: query plans, SQL, results and the trace |
 
-A run usually goes: `get_context`, `begin_question`, one or more `run_sql`, then `submit_answer` until it is accepted. If no submission passes, the CLI prints the model's last text under a red "unverified" banner.
+A run usually goes: `get_context`, `begin_question`, one or more `run_sql`, then `submit_answer` until it is accepted. The application binds the original question before the model runs. If the latest submission fails, the CLI prints the model's last text under a red "unverified" banner.
 
 Every session appends each tool call (arguments, query plans, SQL, results, rejected attempts) to `outputs/traces/<session>.jsonl`.
 
@@ -100,7 +100,7 @@ Each layer runs on the server, so it applies to every client, not only this CLI.
 
 Before any SQL runs, `begin_question` classifies the question text. It looks for:
 
-- concepts the data lacks: vehicle color, model or body style, traffic stops, other states, dates after 2021-06-03
+- concepts the data lacks: vehicle color, model or body style, traffic stops, other states, dates outside 2001-01-01 through 2021-06-03 (including later months in 2021)
 - causal wording ("prove", "works", "bias")
 - exposure wording ("safest", "per capita")
 
@@ -112,16 +112,19 @@ On every query:
 - The guard allows one read-only SELECT, with no file-reading functions.
 - Unknown tables and columns are rejected, with a pointer to the real names.
 - Joins between tables must be key equalities joined by AND. `ON TRUE`, `OR`, non-equality, and a victims join without `party_number` are rejected.
-- Summing a crash-level column after joining to people in the same query is rejected; `WHERE EXISTS` is allowed.
+- Aggregating duplicated crash-level values after joining to people is rejected, including collections such as `list_sum(list(...))`; `WHERE EXISTS` is allowed. `MIN`, `MAX`, and counts have separate checks.
 - Each output column is traced through CTEs and subqueries. A column that is only a literal, such as `SELECT 100000 AS x`, can run but can never be cited as evidence.
 
 On every answer, `submit_answer` checks each claim:
 
 - It recomputes the value from the cited cells and the stated operation (value, ratio, percent, percent change, difference, sum).
+- Percentages require `percent_of` or `percent_change` with separate numerator and denominator cells. A SQL-computed percentage cannot be displayed with `value`. Times comparisons require `ratio`.
 - It checks the number in the text at its displayed precision.
 - A decrease must read as a decrease.
-- The named entity must match the cited row's label.
+- The named entity must match the cited row's label; literal string labels cannot provide evidence.
 - Cells must come from queries run for this question.
+- Collision claims cannot cite counts carrying a fan-out warning.
+- The turn must belong to the current host-bound request. Changing the question or replaying an earlier request fails certification.
 - Every number in the prose must belong to a claim.
 
 The server, not the model, then writes the gaps, caveats and an evidence table into the final answer. The model can't leave them out.
@@ -150,7 +153,9 @@ DuckDB was kept for speed, not accuracy. On the same queries the two engines ret
 
 ## Other ways to run it
 
-Claude Code, Claude Desktop, Cursor or Codex: open the folder. `.mcp.json` registers the `switrs` server.
+Claude Code, Claude Desktop, Cursor or Codex: open the folder. `.mcp.json` registers the `switrs` server for exploration. Certification requires a host request binding; the default standalone configuration does not supply one.
+
+The CLI, web chat and built-in eval runner bind requests automatically. A custom host must either call `Toolkit.bind_question(question)` before each in-process turn, or set `SWITRS_REQUEST_FILE` to a host-controlled JSON file containing `{"id": "fresh-request-id", "question": "original user text"}`. Replace the file atomically and use a fresh ID for every question, including repeated questions. Keep this file outside the model's writable tools. The host must bind the question before `begin_question`; setting the file after opening a turn does not certify that turn. Unbound MCP clients may run read-only queries but `submit_answer` refuses certification.
 
 Local web chat at http://127.0.0.1:8800. It streams each tool call as a card (query plan, SQL, rows) and keeps chats. Follow-ups resume the same Claude session, and messages to one chat run one at a time.
 
@@ -182,7 +187,7 @@ uv run python scripts/compare_engines.py --sqlite PATH      # same queries on bo
 
 `evals/golden.yaml` holds 11 questions: the five examples, the precise belt question behind example 3, and five traps. The traps are a fan-out count, a 2019 motorcycle count, the hour with most fatal crashes, sparse cellphone data, and a Las Vegas question the data cannot answer.
 
-Number checks are sign-aware and require the entity in the same sentence. A question passes only if its answer passed `submit_answer`, and the grader reads that certified answer from the trace. If the golden SQL's values drift from `expected_v1.json`, the run stops until someone reviews the change and approves it with `--freeze`. Tests deliberately corrupt correct answers (swapped entity, flipped sign, inflated number, invented Las Vegas count) and require the grader to reject them.
+Number checks are sign-aware and require the entity in the same sentence. For traced runs, the latest submission must pass `submit_answer`. The grader reads its submitted body, so server-added caveats and evidence cannot satisfy answer checks. Targeted checks also reject direct causal/bias verdicts and invented counts written as words. External answers without traces have unknown certification. If the golden SQL's values drift from `expected_v1.json`, the run stops until someone reviews the change and approves it with `--freeze`.
 
 Latest agent run, 2026-10-19, `claude-opus-5-5` through headless Claude Code with only this project's tools:
 
@@ -190,12 +195,14 @@ Latest agent run, 2026-10-19, `claude-opus-5-5` through headless Claude Code wit
 - 0 to 5 rejected submissions per question before one passed. Every rejection was an unbound number, a mismatched entity or a wrong direction.
 - $3.84 for all 11, about $0.19 to $0.59 per question.
 
-These 11 questions are a smoke test. The grader was adjusted while reading these answers, so passing them is not evidence of general reliability.
+These 11 questions are a smoke test. The grader was adjusted while reading these answers, so passing them is not evidence of general reliability. The recorded run predates the stricter certification and body-only grading checks; it has not been rerun under them.
 
 ## Known limits
 
 - A passing `submit_answer` proves each number came from a cited result cell. It does not prove the query measured what the question asked. Read the query plans (`switrs ask -v`) for anything that matters.
 - Each claim contains one numeric assertion. Labelled clauses start with the exact entity and a simple predicate ("Los Angeles had 2,851,925 crashes"). Use separate claims for separate clauses; numbers repeated from the question still require evidence. Calendar years in context such as "in 2020" remain labels.
+- Write quantities in decimal digits. Spelled-out quantities and numeric glyphs are rejected. ISO date/time assertions are unsupported in certified prose; inspect dates and times in query results instead. These restrictions can reject otherwise correct prose rather than silently certify an unchecked fact.
+- Scope classification and evaluator contradiction detection use English rules, not complete semantic validation. Unusual paraphrases and geographic abbreviations can evade them.
 - SQL provenance follows CTEs, subqueries, and wildcard outputs. A set-operation column is citable only if every branch is data-derived. Mixed literal/data columns cannot be cited, even for their data-derived rows.
 - Joins through simple projections and filters preserve known keys, including renamed key columns. Joins through aggregates or other complex derived relations are rejected when their keys cannot be established. Use base-table joins or `WHERE EXISTS` for person filters. Use `EXISTS`/`NOT EXISTS` instead of explicit `SEMI`/`ANTI JOIN`. Fan-out state is retained through window functions and grouped derived results; the guard can conservatively reject an aggregate whose deduplication it cannot prove.
 - The model can still add hedged speculation about causes in prose, as in the fatal-share answer in the demo.
