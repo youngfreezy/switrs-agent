@@ -145,3 +145,23 @@ def test_injected_database_must_match_the_manifest_not_environment(snapshot, mon
             tools.Toolkit(db=database)
     finally:
         database.con.close()
+
+
+@pytest.mark.parametrize('source_sql,question,expected', [
+    ("UPDATE collisions SET motorcycle_collision='' WHERE case_id='C';", 'How many collisions?', 3),
+    ("UPDATE collisions SET killed_victims=9007199254740993 WHERE case_id='A';", 'How many people were killed?', 9007199254740994),
+])
+def test_valid_normalization_and_exact_counts_survive_full_pipeline(snapshot, monkeypatch, source_sql, question, expected):
+    source, target, meta = snapshot('valid-values', source_sql=source_sql)
+    assert reconcile_pair(monkeypatch, source, target, meta)['status'] == 'ok'
+    toolkit = tools.Toolkit()
+    try:
+        toolkit.bind_question(question)
+        turn = toolkit.begin_question(question, 'answerable', 'Original request.')['turn_id']
+        p = toolkit.prepare_answer(turn)
+        assert p['claims'][0]['computed'] == expected
+        assert type(p['claims'][0]['computed']) is int
+        r = toolkit.submit_answer(turn, p['answer'], p['claims'])
+        assert r['certified'] and f'{expected:,}' in r['final_answer']
+    finally:
+        toolkit.db.con.close()
