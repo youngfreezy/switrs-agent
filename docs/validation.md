@@ -49,6 +49,8 @@ Run the new synthetic regressions without the large dataset or model credentials
 uv run pytest -q tests/test_dataset_integrity.py tests/test_snapshot_coverage.py tests/test_fatal_classification.py tests/test_integrity_followup.py
 ```
 
+The [reproduction guide](review-regressions.md) maps each original failure to its regression and required outcome.
+
 These tests preserve both sides of the contract: corrupted data cannot become a certified measurement, and supported questions on valid records still return independently checked answers.
 
 Recorded engine comparisons returned matching aggregates. A nine-query comparison and a separate ten-query review both passed. SQLite took 86 to 111 seconds in total, against 1.35 to 1.5 seconds for DuckDB. These historical timings exclude an indexed SQLite copy and are not a performance guarantee.
