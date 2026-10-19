@@ -19,7 +19,26 @@ Number checks are sign-aware and require the entity in the same sentence. For tr
 
 ## Recorded results
 
-The version 0.2 review on 2026-10-19 recorded:
+The post-review hardening run on 2026-10-19 recorded:
+
+- **544 tests passed, with no skips.** The package build also passed.
+- All **11 known questions** passed through MCP preparation and publication. Four additional supported answers matched independent queries on the original SQLite file; four unsupported requests returned limitations without measurement claims. No model calls were made in this run.
+- Full record reconciliation matched **47,157,168 rows** across collisions, parties, victims, and case IDs, with zero mismatched records, cast losses, or integrity problems. The frozen golden baseline did not change.
+- The full-data run exposed case-local victim IDs, which are now keyed by `(case_id, id)`. The source also contains one unrecognized severity code and one known severity/fatality disagreement. Qualified coded-fatal answers disclose these limitations while retaining the useful hourly result: 18:00, with 3,921 records coded fatal.
+- The second attack pass found a source-path bypass: an unescaped `#` could make reconciliation hash one source but open another. The regression reproduced false approval before the URI-encoding fix and rejects it afterward. Valid filenames containing `#` still work.
+
+The independent source-query controls returned:
+
+| Supported question | SQLite and certified result |
+| --- | ---: |
+| Orange County collisions in 2019 | 29,795 |
+| Recorded fatalities in Orange County in 2020 | 156 |
+| Los Angeles County collisions coded fatal in 2020 | 664 |
+| California motorcycle-involved collisions in 2019 | 15,870 |
+
+These results used dataset `switrs-v6-b72ee1f04808` and analytical SHA-256 `0a21770c2307dc875b0be07391e513daad8d47a22820403c4c826f52a8c8924e`. The tested implementation was commit `6a3233f`; subsequent documentation updates do not change its behavior. See the [reproduction guide](review-regressions.md) for commands and test mapping.
+
+The earlier version 0.2 review on 2026-10-19 recorded:
 
 - 479 tests passed with no skips, including all 11 example questions through the compiler on the real snapshot.
 - The live `claude-opus-5-5` run passed 11/11 under the current grader. Five raw model outputs differed from their certificates; the publisher retained the unchanged server answers. The harness estimated $2.08 for the run.
