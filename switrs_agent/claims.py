@@ -121,7 +121,7 @@ def _masked_numbers(text: str) -> str:
     chars = list(text)
     for match in NUM.finditer(text):
         raw = match.group(1)
-        if (raw.isdigit() and 1990 <= int(raw) <= 2030 and not match.group(2)
+        if (len(raw) == 4 and raw.isdigit() and 1990 <= int(raw) <= 2030 and not match.group(2)
                 and not COUNT_NOUN.match(text[match.end():])
                 and re.search(r"\b(in|during|since|before|after|from|to|between|and|year)\s+$",
                               text[:match.start()], re.I)):
@@ -145,7 +145,10 @@ def check_claim(claim: dict, queries: dict, turn_id: str, sentence: str = "") ->
         value, rows = compute(claim, queries, turn_id)
     except ClaimError as e:
         return None, errs + [f"claim {text[:60]!r}: {e}"]
-    shown = _numbers(text)
+    try:
+        shown = _numbers(text)
+    except (ValueError, OverflowError):
+        return value, errs + ["Use a finite numeric value with a supported magnitude and precision."]
     if len(shown) != 1:
         return value, errs + [f"claim {text[:60]!r}: use one numeric assertion per claim; found {len(shown)}"]
     op = claim.get("op", "value")

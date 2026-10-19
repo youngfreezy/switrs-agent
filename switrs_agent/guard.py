@@ -228,7 +228,7 @@ def _analyze(tree: exp.Expression, schema: dict):
 
                 def value_nodes(expression):
                     # A scalar's output is one value. Its nested filters are not output lineage.
-                    return expression.walk(prune=lambda n: isinstance(n, exp.Subquery))
+                    return expression.walk(prune=lambda n: isinstance(n, exp.Query))
 
                 names, flags, origins, multiplied, collision_values = [], [], [], [], []
                 for projection in node.expressions:

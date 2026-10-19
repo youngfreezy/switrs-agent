@@ -36,7 +36,7 @@ def _summary(ev: dict) -> str:
     r, tool = ev["result"], ev["tool"]
     if ev["is_error"] or (isinstance(r, dict) and "error" in r):
         msg = r.get("error") if isinstance(r, dict) else str(r)
-        return f"[red]rejected[/red] [dim]{str(msg)[:110]}[/dim]"
+        return f"[red]rejected[/red] [dim]{escape(str(msg)[:110])}[/dim]"
     if tool == "run_sql" and isinstance(r, dict):
         bits = [f"[cyan]{r.get('query_id')}[/cyan]", f"{r.get('row_count')} rows", f"{r.get('elapsed_ms')} ms"]
         if r.get("warnings"):
@@ -45,19 +45,20 @@ def _summary(ev: dict) -> str:
     if tool == "begin_question" and isinstance(r, dict):
         bits = [f"[cyan]{r.get('turn_id')}[/cyan]"]
         if r.get("gaps_to_state"):
-            bits.append(f"[yellow]gaps: {'; '.join(str(g) for g in r['gaps_to_state'])[:110]}[/yellow]")
+            gaps = escape('; '.join(str(g) for g in r['gaps_to_state'])[:110])
+            bits.append(f"[yellow]gaps: {gaps}[/yellow]")
         return "  ".join(bits)
     if tool == "submit_answer" and isinstance(r, dict):
         if r.get("ok"):
             return f"[green]accepted, {r.get('claims_checked')} claims bound to query cells[/green]"
         errs = r.get("errors") or []
-        return f"[red]rejected ({len(errs)} error(s))[/red] [dim]{str(errs[0])[:100] if errs else ''}[/dim]"
+        return f"[red]rejected ({len(errs)} error(s))[/red] [dim]{escape(str(errs[0])[:100]) if errs else ''}[/dim]"
     if tool == "get_context":
         size = len(r) if isinstance(r, str) else len(json.dumps(r, default=str))
         return f"[dim]{size:,} chars of schema, metrics and caveats[/dim]"
     if tool == "distinct_values" and isinstance(r, dict):
         vals = [str(v[0]) for v in r.get("values", [])[:4]]
-        return f"[dim]{', '.join(vals)}{'...' if len(r.get('values', [])) > 4 else ''}[/dim]"
+        return f"[dim]{escape(', '.join(vals))}{'...' if len(r.get('values', [])) > 4 else ''}[/dim]"
     return "[dim]done[/dim]"
 
 
@@ -91,7 +92,7 @@ async def run_turn(agent, question: str, verbose: bool) -> dict:
             k = ev["kind"]
             if k == "tool_call":
                 calls[ev["id"]] = ev
-                status.update(f"[dim]{ev['tool']}...[/dim]")
+                status.update(f"[dim]{escape(ev['tool'])}...[/dim]")
             elif k == "tool_result":
                 call = calls.get(ev["id"], {"tool": ev["tool"], "input": {}})
                 room = max(30, console.width - 22)
@@ -99,7 +100,7 @@ async def run_turn(agent, question: str, verbose: bool) -> dict:
                 plain = Text.from_markup(line).plain
                 if len(plain) > room:
                     line = escape(plain[:room - 3]) + "..."
-                console.print(f"  [bold]{call['tool']:<15}[/bold] {line}")
+                console.print(f"  [bold]{escape(call['tool']):<15}[/bold] {line}")
                 summ = _summary(ev)
                 if len(Text.from_markup(summ).plain) > room:
                     summ = escape(Text.from_markup(summ).plain[:room - 3]) + "..."
@@ -133,9 +134,11 @@ async def run_turn(agent, question: str, verbose: bool) -> dict:
 
 
 def _print_query(inp: dict, result) -> None:
+    if not isinstance(inp, dict):
+        return
     if inp.get("query_plan"):
-        console.print(Panel(inp["query_plan"], title="query plan", title_align="left", border_style="dim"))
-    console.print(Syntax(inp.get("sql", ""), "sql", word_wrap=True, background_color="default"))
+        console.print(Panel(Text(str(inp["query_plan"])), title="query plan", title_align="left", border_style="dim"))
+    console.print(Syntax(str(inp.get("sql", "")), "sql", word_wrap=True, background_color="default"))
     if isinstance(result, dict) and result.get("rows"):
         _print_rows(result["columns"], result["rows"], limit=8)
 

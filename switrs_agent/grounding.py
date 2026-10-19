@@ -39,6 +39,8 @@ def extract_numbers(text: str) -> list[Claim]:
         raw_value = raw.replace(",", "").replace("−", "-").lower()
         value = float(raw_value)
         mantissa, _, exponent = raw_value.partition("e")
+        if len(exponent.lstrip("+-").lstrip("0")) > 3:
+            raise ValueError("Scientific exponent is outside the supported range.")
         decimals = (len(mantissa.split(".")[1]) if "." in mantissa else 0) - int(exponent or 0)
         kind = "plain"
         if unit in ("%", "percent"):
