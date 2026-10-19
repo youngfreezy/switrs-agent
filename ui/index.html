@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SWITRS collision data agent</title>
+<style>
+:root{color-scheme:light dark;--fg:#1d1d1f;--bg:#fafafa;--panel:#fff;--mut:#6b6b70;--line:#e2e2e6;--acc:#2f5bd3;--ok:#1a7f37;--bad:#b42318;--warn:#9a6700;--code:rgba(127,127,127,.12)}
+@media(prefers-color-scheme:dark){:root{--fg:#ececf1;--bg:#141416;--panel:#1c1c1f;--mut:#9a9aa3;--line:#2e2e33;--acc:#7c9cff}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.55 system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);display:flex;height:100vh}
+aside{width:250px;border-right:1px solid var(--line);padding:12px;overflow:auto;background:var(--panel)}
+aside h1{font-size:15px;margin:4px 4px 12px}aside button{width:100%;margin-bottom:10px}
+.chatlink{display:block;padding:7px 8px;border-radius:6px;color:inherit;text-decoration:none;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chatlink:hover,.chatlink.on{background:var(--code)}
+main{flex:1;display:flex;flex-direction:column;min-width:0}
+#log{flex:1;overflow:auto;padding:20px max(20px,calc(50% - 420px))}
+.msg{margin:0 0 18px}.user{background:var(--code);padding:10px 14px;border-radius:10px;white-space:pre-wrap}
+.answer h1,.answer h2,.answer h3{font-size:16px;margin:14px 0 6px}.answer p{margin:8px 0}
+.answer table,.tbl{border-collapse:collapse;font-size:13px;margin:8px 0;display:block;overflow-x:auto}
+.answer td,.answer th,.tbl td,.tbl th{border:1px solid var(--line);padding:3px 8px;text-align:left}
+code,pre{font:12.5px ui-monospace,Menlo,monospace}pre{background:var(--code);padding:8px 10px;border-radius:6px;white-space:pre-wrap;margin:6px 0}
+.tool{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--panel)}
+.tool summary{cursor:pointer;padding:6px 10px;font-size:13.5px;list-style:none}.tool summary::-webkit-details-marker{display:none}
+.tool .body{padding:0 12px 10px;font-size:13.5px}.tag{font-size:12px;padding:1px 6px;border-radius:4px;background:var(--code);margin-left:6px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.mut{color:var(--mut);font-size:13px}
+form{display:flex;gap:8px;padding:12px max(20px,calc(50% - 420px));border-top:1px solid var(--line);background:var(--panel)}
+textarea{flex:1;resize:none;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);height:64px}
+button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--acc);color:#fff;cursor:pointer}
+button.ghost{background:transparent;color:var(--fg)}button:disabled{opacity:.5;cursor:default}
+.hint{font-size:13px;color:var(--mut);margin:0 0 14px}
+.examples button{display:block;width:100%;text-align:left;margin:6px 0;background:var(--panel);color:var(--fg)}
+.final{border-left:3px solid var(--ok);padding-left:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<aside>
+  <h1>SWITRS agent</h1>
+  <button class="ghost" id="new">New chat</button>
+  <div id="chats"></div>
+</aside>
+<main>
+  <div id="log"></div>
+  <form id="f">
+    <textarea id="q" placeholder="Ask about California collisions, 2001 to 2021-06-03"></textarea>
+    <button id="send">Ask</button>
+  </form>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+let chatId = null, busy = false;
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// Small markdown renderer: headings, bold, italics, inline code, lists, tables, code blocks. Input is escaped first.
+function md(src){
+  const lines = esc(src).split("\n"); let html = "", i = 0;
+  const inline = t => t.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g,"$1<i>$2</i>");
+  while(i < lines.length){
+    const l = lines[i];
+    if(l.startsWith("```")){ let b=[]; i++; while(i<lines.length && !lines[i].startsWith("```")) b.push(lines[i++]); i++; html += `<pre>${b.join("\n")}</pre>`; continue; }
+    if(/^\|.*\|\s*$/.test(l) && i+1<lines.length && /^\|[\s:|-]+\|\s*$/.test(lines[i+1])){
+      const row = r => r.trim().replace(/^\||\|$/g,"").split("|").map(c=>inline(c.trim()));
+      let t = "<table><thead><tr>"+row(l).map(c=>`<th>${c}</th>`).join("")+"</tr></thead><tbody>"; i+=2;
+      while(i<lines.length && /^\|.*\|\s*$/.test(lines[i])) t += "<tr>"+row(lines[i++]).map(c=>`<td>${c}</td>`).join("")+"</tr>";
+      html += t+"</tbody></table>"; continue; }
+    const h = l.match(/^(#{1,4})\s+(.*)/); if(h){ html += `<h3>${inline(h[2])}</h3>`; i++; continue; }
+    if(/^\s*([-*]|\d+\.)\s+/.test(l)){ const ordered = /^\s*\d+\./.test(l); let items=[];
+      while(i<lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i])) items.push(inline(lines[i++].replace(/^\s*([-*]|\d+\.)\s+/,"")));
+      html += (ordered?"<ol>":"<ul>")+items.map(x=>`<li>${x}</li>`).join("")+(ordered?"</ol>":"</ul>"); continue; }
+    if(!l.trim()){ i++; continue; }
+    let p=[]; while(i<lines.length && lines[i].trim() && !/^(#{1,4}\s|```|\s*([-*]|\d+\.)\s|\|)/.test(lines[i])) p.push(inline(lines[i++]));
+    if(p.length) html += `<p>${p.join("<br>")}</p>`; else { html += `<p>${inline(l)}</p>`; i++; }
+  }
+  return html;
+}
+
+function table(cols, rows){
+  if(!cols || !rows) return "";
+  return `<table class="tbl"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${
+    rows.slice(0,25).map(r=>`<tr>${r.map(v=>`<td>${esc(typeof v==="number"? v.toLocaleString(): v)}</td>`).join("")}</tr>`).join("")}</tbody></table>`
+    + (rows.length>25? `<div class="mut">${rows.length} rows, first 25 shown</div>`:"");
+}
+
+function toolCard(call){
+  const d = document.createElement("details"); d.className = "tool"; d.id = "t-"+call.id;
+  const inp = call.input || {};
+  let label = esc(call.tool);
+  if(call.tool==="run_sql") label += ` <span class="mut">${esc(inp.purpose||"")}</span>`;
+  if(call.tool==="distinct_values") label += ` <span class="mut">${esc(inp.table)}.${esc(inp.column)}</span>`;
+  d.innerHTML = `<summary>${label} <span class="tag status">running</span></summary><div class="body">${
+    call.tool==="run_sql" ? `${inp.query_plan?`<p><b>Query plan.</b> ${esc(inp.query_plan)}</p>`:""}<pre>${esc(inp.sql)}</pre>`
+    : call.tool==="verify_answer" ? `<p class="mut">Checking the draft answer against queries ${esc((inp.query_ids||[]).join(", "))}</p>`
+    : `<pre>${esc(JSON.stringify(inp,null,1))}</pre>`}<div class="res"></div></div>`;
+  return d;
+}
+
+function fillResult(ev){
+  const d = document.getElementById("t-"+ev.id); if(!d) return;
+  const r = ev.result, st = d.querySelector(".status"), res = d.querySelector(".res");
+  if(typeof r !== "object" || r === null){ st.textContent = ev.is_error?"error":"done"; res.innerHTML = `<pre>${esc(String(r).slice(0,3000))}</pre>`; return; }
+  if(r.error){ st.textContent = "rejected"; st.classList.add("bad"); res.innerHTML = `<p class="bad">${esc(r.error)}</p>${r.hint?`<p class="mut">${esc(r.hint)}</p>`:""}`; d.open = true; return; }
+  if(r.query_id){ st.textContent = r.query_id; res.innerHTML =
+      (r.warnings||[]).map(w=>`<p class="warn">${esc(w)}</p>`).join("") + table(r.columns, r.rows)
+      + `<div class="mut">${r.row_count} rows${r.truncated?" (capped)":""}, ${r.elapsed_ms} ms. Caveats: ${esc((r.caveats||[]).join(", "))}</div>`; return; }
+  if("unsupported_numbers" in r){ st.textContent = r.ok? "numbers traced":"unsupported numbers"; st.classList.add(r.ok?"ok":"bad");
+      res.innerHTML = `<p class="${r.ok?"ok":"bad"}">${r.ok? `All ${r.numbers_checked} numbers trace to the cited results.` : "Not found in the cited results: "+esc(r.unsupported_numbers.join(", "))}</p>`
+      + `<p class="mut">Required caveats: ${esc((r.required_caveats||[]).map(c=>c.id).join(", "))}</p>`; if(!r.ok) d.open = true; return; }
+  st.textContent = "done";
+  const text = JSON.stringify(r, null, 1);
+  res.innerHTML = `<pre>${esc(text.length>4000? text.slice(0,4000)+"\n...": text)}</pre>`;
+}
+
+function addUser(text){ const m = document.createElement("div"); m.className="msg user"; m.textContent = text; $("#log").append(m); }
+function addAssistant(){ const m = document.createElement("div"); m.className="msg"; $("#log").append(m); return m; }
+function scroll(){ $("#log").scrollTop = $("#log").scrollHeight; }
+
+function notes(box){
+  let n = box.querySelector(".notes");
+  if(!n){ n = document.createElement("details"); n.className = "tool notes"; n.innerHTML = '<summary>Agent working notes <span class="tag">not the checked answer</span></summary><div class="body"></div>'; box.append(n); }
+  return n.querySelector(".body");
+}
+function renderEvent(box, ev){
+  if(ev.kind==="text"){ const a = document.createElement("div"); a.className="answer"; a.innerHTML = md(ev.text); notes(box).append(a); }
+  else if(ev.kind==="certified"){ const a = document.createElement("div"); a.className="answer final";
+    a.innerHTML = '<p class="ok"><b>Checked answer.</b> Every number below is bound to query cells by submit_answer.</p>' + md(ev.final_answer); box.append(a); }
+  else if(ev.kind==="uncertified"){ const s = document.createElement("p"); s.className = "bad";
+    s.textContent = "No answer passed submit_answer in this turn. Anything in the working notes is unverified."; box.append(s); }
+  else if(ev.kind==="tool_call") box.append(toolCard(ev));
+  else if(ev.kind==="tool_result") fillResult(ev);
+  else if(ev.kind==="status"){ const s=document.createElement("p"); s.className="mut"; s.textContent=ev.text; box.append(s); }
+  else if(ev.kind==="done"){ const s=document.createElement("p"); s.className = ev.error?"bad":"mut";
+    s.textContent = ev.error ? ("The agent stopped with an error: "+(ev.result||"")) : `Cost $${(ev.cost_usd||0).toFixed(3)}, ${ev.turns} model turns.`;
+    if(ev.error && !box.querySelector(".answer")){} box.append(s); }
+}
+
+async function ask(text){
+  busy = true; $("#send").disabled = true; addUser(text); const box = addAssistant();
+  const wait = document.createElement("p"); wait.className="mut"; wait.textContent="Working..."; box.append(wait);
+  const resp = await fetch("/api/chat", {method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({message:text, chat_id:chatId})});
+  const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = "";
+  while(true){ const {value, done} = await reader.read(); if(done) break; buf += dec.decode(value, {stream:true});
+    let k; while((k = buf.indexOf("\n\n")) >= 0){ const chunk = buf.slice(0,k); buf = buf.slice(k+2);
+      if(!chunk.startsWith("data: ")) continue; const ev = JSON.parse(chunk.slice(6));
+      if(ev.kind==="chat"){ chatId = ev.chat_id; continue; } if(ev.kind==="session") continue;
+      wait.remove(); renderEvent(box, ev); scroll(); } }
+  busy = false; $("#send").disabled = false; loadChats();
+}
+
+async function loadChats(){
+  const list = await (await fetch("/api/chats")).json();
+  $("#chats").innerHTML = list.map(c=>`<a class="chatlink ${c.id===chatId?"on":""}" href="#" data-id="${esc(c.id)}">${esc(c.title)}</a>`).join("");
+  document.querySelectorAll(".chatlink").forEach(a => a.onclick = e => { e.preventDefault(); openChat(a.dataset.id); });
+}
+
+async function openChat(id){
+  const chat = await (await fetch("/api/chats/"+id)).json(); chatId = id; $("#log").innerHTML = "";
+  for(const t of chat.turns){ addUser(t.user); const box = addAssistant(); t.events.forEach(ev => renderEvent(box, ev)); }
+  loadChats(); scroll();
+}
+
+function welcome(){
+  $("#log").innerHTML = `<p class="hint">Answers come only from SQL run on the SWITRS records (police-reported California crashes, 2001-01-01 to 2021-06-03). Every query, its plan and its result appear as cards you can open. Gaps in the data are stated in the answer.</p>
+  <div class="examples">${["Which county has the most collisions?","What percentage of collisions involved a parked vehicle?","How has COVID-19 changed collisions, if at all?","Is there any data showing police are biased against red sports cars?"].map(q=>`<button type="button">${esc(q)}</button>`).join("")}</div>`;
+  document.querySelectorAll(".examples button").forEach(b => b.onclick = () => { if(!busy){ $("#log").innerHTML=""; ask(b.textContent); } });
+}
+
+$("#f").onsubmit = e => { e.preventDefault(); const t = $("#q").value.trim(); if(!t || busy) return; if(!chatId) $("#log").innerHTML=""; $("#q").value=""; ask(t); };
+$("#q").addEventListener("keydown", e => { if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); $("#f").requestSubmit(); } });
+$("#new").onclick = () => { chatId = null; welcome(); loadChats(); };
+async function showStatus(){
+  try{ const s = await (await fetch("/api/status")).json();
+    const el = document.createElement("p"); el.className = s.billing_ok ? "mut" : "bad";
+    el.textContent = (s.billing_ok ? "Billing: " : "Not ready: ") + s.billing + ` Model ${s.model}, up to $${s.turn_budget_usd} per question.`;
+    $("aside").append(el); }catch(e){}
+}
+welcome(); loadChats(); showStatus();
+</script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+# Semantic layer for the SWITRS collision database.
+# The agent's system prompt is rendered from this file plus catalog.json (generated values).
+# Facts here were checked against the data on 2026-10-19; see evals/golden.yaml for the queries.
+
+dataset:
+  name: California SWITRS collision records (CHP), Kaggle alexgude v6
+  coverage: "collision_date runs 2001-01-01 to 2021-06-03"
+  grain: "One row in collisions per reported crash. Only crashes reported to police are present."
+  source_note: >-
+    Built from five CHP database dumps (2016, 2017, 2018, 2020, 2021). When a case appears in
+    several dumps the newest copy is kept. Readable labels replace the raw SWITRS codes.
+
+tables:
+  collisions:
+    description: One row per reported crash. Where, when, severity, primary cause, conditions.
+    key: case_id
+  parties:
+    description: >-
+      One row per party in a crash (a driver, pedestrian, cyclist, or parked vehicle).
+      A crash has party_count parties.
+    key: [case_id, party_number]
+  victims:
+    description: >-
+      One row per injured or otherwise recorded victim (occupants, pedestrians, cyclists).
+      Uninjured drivers are recorded in parties, not here.
+    key: id
+  case_ids:
+    description: Bookkeeping. Which CHP dump (db_year) each case came from. Rarely needed.
+    key: case_id
+
+joins:
+  - "collisions.case_id = parties.case_id  (one collision to many parties)"
+  - "parties.case_id = victims.case_id AND parties.party_number = victims.party_number  (a victim belongs to the party whose vehicle they were in or who they were)"
+  - "collisions.case_id = case_ids.case_id"
+
+columns:
+  collisions:
+    case_id: Crash identifier. Unique in collisions.
+    collision_date: DATE of the crash.
+    collision_time: TIME of the crash (local).
+    county_location: County name, lower case, e.g. 'los angeles'.
+    county_city_location: Numeric county+city code as text, e.g. '1942'.
+    population: Size bucket of the city where the crash happened, e.g. '>250000', 'unincorporated'. Not a population count.
+    collision_severity: "Worst injury in the crash: 'fatal', 'severe injury', 'other injury', 'pain', 'property damage only'."
+    killed_victims: Number of people killed in the crash.
+    injured_victims: Number of people injured in the crash.
+    party_count: Number of parties involved.
+    primary_collision_factor: Broad cause class, e.g. 'vehicle code violation'.
+    pcf_violation_category: Officer-assigned primary cause, e.g. 'speeding', 'dui', 'improper turning'.
+    type_of_collision: Crash shape, e.g. 'rear end', 'broadside', 'head-on'.
+    motor_vehicle_involved_with: "What the crash primarily involved: 'other motor vehicle', 'parked motor vehicle', 'pedestrian', 'fixed object', ..."
+    hit_and_run: "'felony', 'misdemeanor', or 'not hit and run'."
+    alcohol_involved: 1 when alcohol was involved, otherwise NULL.
+    pedestrian_collision: 1 when a pedestrian was involved, else 0.
+    bicycle_collision: 1 when a bicycle was involved, else 0.
+    motorcycle_collision: 1 when a motorcycle was involved, else 0.
+    truck_collision: 1 when a truck was involved, else 0.
+    lighting: Light conditions, e.g. 'daylight', 'dark with street lights'.
+    weather_1: Main weather, e.g. 'clear', 'raining'.
+    road_surface: e.g. 'dry', 'wet'.
+    latitude: Decimal degrees. Often NULL in older years.
+    longitude: Decimal degrees (negative). Often NULL in older years.
+  parties:
+    party_number: 1-based position of the party within the crash.
+    party_type: "'driver', 'pedestrian', 'parked vehicle', 'bicyclist', 'other'."
+    at_fault: 1 when the officer judged this party at fault, else 0.
+    party_sex: "'male' or 'female'."
+    party_age: Age in years.
+    party_sobriety: e.g. 'had not been drinking', 'had been drinking, under influence'.
+    party_race: Officer-recorded race of the party.
+    movement_preceding_collision: What the party was doing just before, e.g. 'proceeding straight', 'parked', 'making left turn'.
+    vehicle_make: Manufacturer, lower case, e.g. 'toyota'. Note 'white' (White Motor trucks) and 'bluebird' (Blue Bird buses) are makes, not colors.
+    vehicle_year: Model year of the vehicle.
+    statewide_vehicle_type: e.g. 'passenger car', 'motorcycle or scooter', 'bicycle', 'pedestrian'.
+    cellphone_in_use: 1 when a cellphone was in use, 0 when not. Mostly NULL.
+    party_safety_equipment_1: Safety equipment the party used (same vocabulary as victims).
+    party_number_killed: People killed in this party's vehicle.
+    party_number_injured: People injured in this party's vehicle.
+  victims:
+    victim_role: "'driver', 'passenger', 'pedestrian', 'bicyclist', 'other'."
+    victim_age: Age in years.
+    victim_sex: "'male' or 'female'."
+    victim_degree_of_injury: "Injury level. Two vocabularies, see caveat injury_vocabulary."
+    victim_seating_position: Seat position in the vehicle.
+    victim_safety_equipment_1: Safety equipment, e.g. 'lap/shoulder harness used', 'driver, motorcycle helmet not used'.
+    victim_safety_equipment_2: Second safety equipment entry.
+    victim_ejected: Whether the victim was ejected.
+
+metrics:
+  collision_count:
+    sql: "COUNT(DISTINCT c.case_id)"
+    note: "Use COUNT(*) only on collisions alone. After a join to parties or victims, COUNT(*) counts people."
+  fatal_collision:
+    sql: "c.collision_severity = 'fatal'"
+  killed_person:
+    sql: "v.victim_degree_of_injury = 'killed'"
+  killed_or_seriously_injured_person:
+    sql: "v.victim_degree_of_injury IN ('killed', 'severe injury', 'suspected serious injury')"
+  injured_person_any:
+    sql: "v.victim_degree_of_injury NOT IN ('no injury') AND v.victim_degree_of_injury IS NOT NULL"
+  driver_at_fault_rate:
+    sql: "AVG(p.at_fault) over parties with p.party_type = 'driver'"
+  belt_status:
+    sql: >-
+      CASE WHEN 'lap/shoulder harness used' IN (v.victim_safety_equipment_1, v.victim_safety_equipment_2)
+            AND 'lap/shoulder harness not used' IN (v.victim_safety_equipment_1, v.victim_safety_equipment_2) THEN 'conflict'
+           WHEN 'lap/shoulder harness used' IN (v.victim_safety_equipment_1, v.victim_safety_equipment_2) THEN 'used'
+           WHEN 'lap/shoulder harness not used' IN (v.victim_safety_equipment_1, v.victim_safety_equipment_2) THEN 'not used'
+           ELSE 'other or unknown' END
+    note: >-
+      Read BOTH equipment fields: field 1 often holds the air bag entry and most belt entries sit in field 2
+      (5.48M belt-used records with both fields vs 1.48M from field 1 alone). Exclude 'conflict' and 'other or
+      unknown' from belt comparisons and say so. State whether the denominator includes victims recorded as
+      'no injury' (it changes the death share: 0.342% vs 0.598% for belted passenger-car occupants).
+      Use the same rule on parties.party_safety_equipment_1/_2 for drivers, which includes uninjured drivers.
+
+caveats:
+  coverage_window:
+    trigger: always
+    text: "The data covers 2001-01-01 to 2021-06-03."
+  partial_recent_months:
+    trigger: "dates in 2021, or yearly totals that include 2021"
+    text: "2021 is partial (data ends 2021-06-03, May 2021 is incomplete). Recent months also undercount because reports arrive late."
+  reported_only:
+    trigger: always
+    text: "Only crashes reported to police are in the data."
+  observational:
+    trigger: "questions about causes, effectiveness, bias, or comparisons between groups"
+    text: "This is observational data. Differences between groups can come from other factors and do not by themselves show cause."
+  helmet_codes_shared:
+    trigger: "victim_safety_equipment_* or party_safety_equipment_* with helmet values"
+    text: "'motorcycle helmet' codes are also applied to bicyclists. Split by parties.statewide_vehicle_type before comparing helmet outcomes."
+  injury_vocabulary:
+    trigger: victim_degree_of_injury
+    text: "Injury labels changed partway through the data. 'severe injury' and 'suspected serious injury' mean the same level; 'complaint of pain' and 'possible injury' are the same; 'other visible injury' and 'suspected minor injury' are the same. Count both members of each pair."
+  victims_exclude_uninjured_drivers:
+    trigger: victims
+    text: "The victims table does not include uninjured drivers, so rates computed from victims describe people in crashes who were recorded as victims, not everyone involved."
+  per_capita:
+    trigger: "rankings of counties or cities"
+    text: "These are raw counts. The data has no population figures, so it cannot rank places per capita."
+  missing_values:
+    trigger: always
+    text: "Many columns have NULL values. Say how many rows were excluded when a column is sparse."
+
+not_in_data:
+  - concept: vehicle color
+    note: "No column records color. Makes named 'white' and 'bluebird' are manufacturers."
+  - concept: vehicle model or trim (e.g. Mustang, 911)
+    note: "Only vehicle_make and vehicle_year exist."
+  - concept: traffic stops, tickets, or citations not tied to a crash
+    note: "The data has only crashes, so it cannot measure how police treat drivers outside crashes."
+  - concept: miles driven or vehicles on the road (exposure)
+    note: "No denominator for how many of each vehicle or driver group were driving."
+  - concept: population counts
+    note: "collisions.population is a city-size bucket, not a count."
+  - concept: crashes outside California
+    note: "Only California crashes."
+  - concept: anything after 2021-06-03
+    note: "The data ends 2021-06-03."

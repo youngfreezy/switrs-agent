@@ -1,0 +1,148 @@
+# Golden set v1. Held out: none of these questions or their SQL appear in the agent prompt.
+# Each `number` check runs its SQL at eval time to get the expected value, so the file never
+# stores hand-typed answers. An answer passes a number check when it contains a number that
+# matches the expected value at the precision the answer displays it.
+# `text` checks are groups of regexes; each group needs at least one match.
+# Questions 1-5 are Fareez's examples (refined wording), 6-10 are trap questions, 11 is the precise
+# version of the safety-equipment question. This is a smoke set, not evidence of general reliability:
+# implementation choices have been tuned while looking at it. Expected values are frozen in
+# expected_v1.json against the dataset version; a change fails the run until reviewed.
+# Number checks are sign-aware. `near` requires the entity in the same sentence as the number.
+
+questions:
+  - id: q01_top_county
+    question: Which county has the most collisions?
+    checks:
+      - {type: text, any: ["los angeles"]}
+      - type: number
+        name: LA collision count or share
+        near: "los angeles"
+        any_of:
+          - "SELECT count(*) FROM collisions WHERE county_location = 'los angeles'"
+          - "SELECT 100.0 * count(*) FILTER (WHERE county_location = 'los angeles') / count(*) FROM collisions"
+      - {type: text, name: per-capita caveat, any: ["per[- ]capita", "population", "raw count"]}
+
+  - id: q02_parked_vehicle
+    question: What percentage of collisions involved a parked vehicle?
+    checks:
+      - type: number
+        name: share where the crash primarily involved a parked motor vehicle
+        sql: "SELECT 100.0 * count(*) FILTER (WHERE motor_vehicle_involved_with = 'parked motor vehicle') / count(*) FROM collisions"
+      - type: number
+        name: share with at least one parked party (party_type 'parked vehicle', movement 'parked', or either)
+        any_of:
+          - "SELECT 100.0 * count(DISTINCT case_id) / (SELECT count(*) FROM collisions) FROM parties WHERE party_type = 'parked vehicle'"
+          - "SELECT 100.0 * count(DISTINCT case_id) / (SELECT count(*) FROM collisions) FROM parties WHERE movement_preceding_collision = 'parked'"
+          - "SELECT 100.0 * count(DISTINCT case_id) / (SELECT count(*) FROM collisions) FROM parties WHERE party_type = 'parked vehicle' OR movement_preceding_collision = 'parked'"
+      - {type: text, name: names the definition used, any: ["defin", "depends", "coded as", "primar", "party"]}
+
+  - id: q03_safety_equipment
+    question: Please prove or disprove that safety equipment actually works.
+    # Answerability test: crash records can describe outcomes by recorded equipment, not prove effect.
+    # q11 holds the precise, numerically graded version.
+    checks:
+      - {type: text, name: says the data cannot prove cause, any: ["observational", "can.?not prove", "can.?t prove", "not (prove|establish|show) caus", "does not prove", "isn.t proof", "not a controlled", "correlat", "confound"]}
+      - {type: text, name: reports belt outcomes, any: ["belt", "harness"]}
+
+  - id: q04_covid
+    question: How has COVID-19 changed collisions, if at all?
+    checks:
+      - type: number
+        name: 2020 vs 2019 change in collisions (calendar year or April-December), or the 2020 count
+        any_of:
+          - "SELECT 100.0 * (count(*) FILTER (WHERE year(collision_date) = 2020) - count(*) FILTER (WHERE year(collision_date) = 2019)) / count(*) FILTER (WHERE year(collision_date) = 2019) FROM collisions"
+          - "SELECT 100.0 * (count(*) FILTER (WHERE collision_date BETWEEN '2020-04-01' AND '2020-12-31') - count(*) FILTER (WHERE collision_date BETWEEN '2019-04-01' AND '2019-12-31')) / count(*) FILTER (WHERE collision_date BETWEEN '2019-04-01' AND '2019-12-31') FROM collisions"
+          - "SELECT count(*) FROM collisions WHERE year(collision_date) = 2020"
+          - "SELECT count(*) FROM collisions WHERE collision_date BETWEEN '2020-04-01' AND '2020-12-31'"
+      - type: number
+        name: April 2020 vs April 2019 change (percent) or April 2020 count
+        any_of:
+          - "SELECT 100.0 * (count(*) FILTER (WHERE collision_date BETWEEN '2020-04-01' AND '2020-04-30') - count(*) FILTER (WHERE collision_date BETWEEN '2019-04-01' AND '2019-04-30')) / count(*) FILTER (WHERE collision_date BETWEEN '2019-04-01' AND '2019-04-30') FROM collisions"
+          - "SELECT count(*) FROM collisions WHERE collision_date BETWEEN '2020-04-01' AND '2020-04-30'"
+      - type: number
+        name: fatal share of collisions in 2020 (calendar year or April-December, percent)
+        any_of:
+          - "SELECT 100.0 * count(*) FILTER (WHERE collision_severity = 'fatal') / count(*) FROM collisions WHERE year(collision_date) = 2020"
+          - "SELECT 100.0 * count(*) FILTER (WHERE collision_severity = 'fatal') / count(*) FROM collisions WHERE collision_date BETWEEN '2020-04-01' AND '2020-12-31'"
+      - {type: text, name: severity rose, any: ["fatal.{0,80}(rose|higher|increase|up)", "(rose|higher|increase).{0,80}fatal", "deadlier", "more severe"]}
+
+  - id: q05_red_sports_car_bias
+    question: There is an inherent bias cops have toward red or flashier sports vehicles. Is there any data to back up this prejudice?
+    checks:
+      - name: says color is not in the data
+        type: text
+        any:
+          - "no (vehicle )?colou?r"
+          - "colou?r (is|isn.t|is not|was not|isn.t) (recorded|in the data|available|captured|included)"
+          - "(does not|doesn.t|cannot|can.t) .{0,40}colou?r"
+          - "without .{0,20}colou?r"
+      - name: says the data cannot test police bias (no stops or exposure)
+        type: text
+        any: ["traffic.stop", "stops? data", "tickets?", "citations?", "exposure", "miles driven", "on the road", "only (has|have|holds|covers|shows|includes) .{0,30}(crashes|collisions)"]
+      - name: does not claim the data settles the bias question
+        type: text
+        any: ["can.?not (be )?test", "can.?t (back|test|support|answer|settle)", "cannot back", "does not (support|show|prove|test)", "doesn.t (support|show|prove|test)", "not (able|enough) to test", "descriptive"]
+
+  - id: q06_drinking_drivers
+    question: How many collisions involved at least one driver who had been drinking?
+    checks:
+      - type: number
+        name: distinct collisions (not party rows)
+        sql: "SELECT count(DISTINCT case_id) FROM parties WHERE party_type = 'driver' AND party_sobriety LIKE 'had been drinking%'"
+
+  - id: q07_fatal_motorcycle_2019
+    question: How many fatal collisions involved a motorcycle in 2019?
+    checks:
+      - type: number
+        name: fatal motorcycle collisions in 2019
+        sql: "SELECT count(*) FROM collisions WHERE motorcycle_collision = 1 AND collision_severity = 'fatal' AND year(collision_date) = 2019"
+
+  - id: q08_fatal_hour
+    question: At what hour of the day do the most fatal crashes happen?
+    checks:
+      - {type: text, name: names 6 PM, any: ["\\b18(:00)?\\b", "6 ?(pm|p\\.m\\.)", "6:00 ?pm", "6 (to|-) ?7 ?pm", "18:00"]}
+      - type: number
+        name: fatal crashes in that hour
+        sql: "SELECT count(*) FROM collisions WHERE collision_severity = 'fatal' AND hour(collision_time) = 18"
+
+  - id: q09_cellphone_at_fault
+    question: What share of at-fault drivers were using a cellphone?
+    checks:
+      - type: number
+        name: share among drivers with a known cellphone value (percent)
+        sql: "SELECT 100.0 * sum(cellphone_in_use) / count(cellphone_in_use) FROM parties WHERE party_type = 'driver' AND at_fault = 1"
+      - {type: text, name: reports missingness, any: ["missing", "unknown", "not recorded", "null", "blank", "known"]}
+
+  - id: q10_las_vegas
+    question: How many crashes happened in Las Vegas in 2019?
+    checks:
+      - {type: text, name: says data is California only, any: ["california only", "only california", "only (has|have|covers|includes|contains|holds) .{0,60}california", "nevada.{0,60}not", "not in (the|this) (data|dataset)", "outside california"]}
+    forbid_counts: true   # any number followed by crashes/collisions etc. is an invented Las Vegas figure
+
+  - id: q11_belt_death_share
+    question: >-
+      Among passenger-car drivers and passengers recorded as victims in police-reported crashes, what
+      share died when a lap/shoulder belt was recorded as used versus not used? Count a belt as used or
+      not used if either equipment field says so, and leave out conflicting or unknown entries.
+    population: >-
+      victims joined to parties on (case_id, party_number); parties.statewide_vehicle_type = 'passenger car';
+      victim_role in ('driver','passenger'); belt status from victim_safety_equipment_1 OR _2; records with
+      both 'used' and 'not used' excluded; denominator includes victims recorded as 'no injury'.
+    checks:
+      - type: number
+        name: death share, belt used (percent)
+        sql: >-
+          SELECT 100.0 * count(*) FILTER (WHERE v.victim_degree_of_injury = 'killed') / count(*) FROM victims v
+          JOIN parties p ON p.case_id = v.case_id AND p.party_number = v.party_number
+          WHERE p.statewide_vehicle_type = 'passenger car' AND v.victim_role IN ('driver', 'passenger')
+            AND 'lap/shoulder harness used' IN (v.victim_safety_equipment_1, v.victim_safety_equipment_2)
+            AND 'lap/shoulder harness not used' NOT IN (coalesce(v.victim_safety_equipment_1, ''), coalesce(v.victim_safety_equipment_2, ''))
+      - type: number
+        name: death share, belt not used (percent)
+        sql: >-
+          SELECT 100.0 * count(*) FILTER (WHERE v.victim_degree_of_injury = 'killed') / count(*) FROM victims v
+          JOIN parties p ON p.case_id = v.case_id AND p.party_number = v.party_number
+          WHERE p.statewide_vehicle_type = 'passenger car' AND v.victim_role IN ('driver', 'passenger')
+            AND 'lap/shoulder harness not used' IN (v.victim_safety_equipment_1, v.victim_safety_equipment_2)
+            AND 'lap/shoulder harness used' NOT IN (coalesce(v.victim_safety_equipment_1, ''), coalesce(v.victim_safety_equipment_2, ''))
+      - {type: text, name: says this does not prove cause, any: ["observational", "not (prove|show|establish) caus", "does not prove", "correlat", "confound", "other factors", "selection"]}
