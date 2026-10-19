@@ -43,3 +43,36 @@ def test_unknown_severity_outside_requested_population_does_not_block(rich_kit):
     rich_kit.db.connection.execute("UPDATE collisions SET collision_severity=NULL WHERE county_location='orange'")
     _, p, _ = publish(rich_kit, 'How many fatal collisions in Los Angeles County?')
     assert p['status'] == 'answered' and p['claims'][0]['computed'] == 2
+
+
+@pytest.mark.parametrize('question', [
+    'How many fatal collisions?',
+    'At what hour of the day do the most fatal crashes happen?',
+    'How has COVID-19 changed collisions, if at all?',
+])
+@pytest.mark.parametrize('severity', [None, 'N'])
+def test_observed_fatal_codes_remain_useful_with_explicit_unknown_exclusions(rich_kit, question, severity):
+    rich_kit.db.connection.execute("UPDATE collisions SET collision_severity=? WHERE case_id='C'", [severity])
+    _, p, result = publish(rich_kit, question)
+    assert p['status'] == 'answered' and result['certified']
+    assert 'coded fatal' in p['answer']
+    assert 'exclude' in p['answer'] and 'not a complete count' in p['answer']
+    assert any(c['metric'] == 'unknown_fatal_classification' and c['computed'] == 1 for c in p['claims'])
+    assert any(c['metric'] in ('collision_count', 'fatal_collision_count', 'fatal_collision_2020') for c in p['claims'])
+
+
+def test_unknown_severity_with_no_observed_fatal_code_cannot_become_zero(rich_kit):
+    rich_kit.db.connection.execute("UPDATE collisions SET collision_severity='severe injury'")
+    rich_kit.db.connection.execute("UPDATE collisions SET collision_severity=NULL WHERE case_id='C'")
+    _, p, _ = publish(rich_kit, 'How many fatal collisions?')
+    assert p['status'] == 'data_quality_blocked'
+    assert not any(c['metric'] == 'collision_count' for c in p['claims'])
+
+
+@pytest.mark.parametrize("severity", [None, "N"])
+def test_unknown_severity_is_not_a_known_code_conflict(rich_kit, severity):
+    rich_kit.db.connection.execute("UPDATE collisions SET collision_severity=?,killed_victims=1 WHERE case_id='C'", [severity])
+    _, p, _ = publish(rich_kit, 'How many fatal collisions?')
+    assert p['status'] == 'answered'
+    assert any(c['metric'] == 'unknown_fatal_classification' and c['computed'] == 1 for c in p['claims'])
+    assert not any(c['metric'] == 'conflicting_fatal_classification' for c in p['claims'])

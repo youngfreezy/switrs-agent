@@ -88,10 +88,10 @@ def fatal_hour(b):
         if n != maximum:
             break
         b.fact('A leading hour was {value} on the local-time 24-hour clock.', 'hour_of_day', q, 'hour', row=i)
-        b.fact('That hour had {value} recorded fatal collisions.', 'fatal_collision_count', q, row=i)
+        b.fact('That hour had {value} reported collisions coded fatal.', 'fatal_collision_count', q, row=i)
     b.parts.append('Fatal collisions here means records coded fatal. All tied leading hours are shown. '
                    'Records with missing collision times are excluded.')
-    return b.finish(interpretation='Rank fatal-collision counts by recorded local hour, excluding missing times.')
+    return b.finish(interpretation='Rank records coded fatal by recorded local hour, excluding unknown severity and missing times.')
 
 
 def cellphone(b):
@@ -141,8 +141,8 @@ def covid(b):
     b.fact('In 2020 there were {value} reported collisions.', 'collision_count_2020', q, 'n2020')
     change(b, q, 'n2020', 'n2019', 'Calendar-year 2020 versus 2019')
     change(b, q, 'april2020', 'april2019', 'April 2020 versus April 2019')
-    share(b, 'In 2019 fatal collisions were {value} of reported collisions.', 'fatal_collision_2019', q, 'fatal2019', 'n2019')
-    share(b, 'In 2020 fatal collisions were {value} of reported collisions.', 'fatal_collision_2020', q, 'fatal2020', 'n2020')
+    share(b, 'In 2019 records coded fatal were {value} of reported collisions.', 'fatal_collision_2019', q, 'fatal2019', 'n2019')
+    share(b, 'In 2020 records coded fatal were {value} of reported collisions.', 'fatal_collision_2020', q, 'fatal2020', 'n2020')
     n19, n20, _, _, f19, f20 = q['rows'][0]
     if n19 and n20:
         comparison = f20 * n19 - f19 * n20
@@ -157,21 +157,26 @@ RECIPES = {name: globals()[name] for name in set(QUESTIONS.values())}
 
 
 def fatal_classification(b, where=''):
-    """Unknown classifications block the measure; known conflicting codes are disclosed.
+    """Unknown classifications cannot become zero; observed fatal codes can be reported with exclusions.
 
     A coded-fatal count is still reproducible when a known code disagrees with a
     death count, but must not be presented as a resolved real-world fatal count.
     """
     q = b.query("""SELECT COUNT(*) FILTER (WHERE collision_severity IS NULL OR
       collision_severity NOT IN ('fatal','severe injury','other injury','pain','property damage only')) AS unknown,
-      COUNT(*) FILTER (WHERE killed_victims IS NOT NULL AND
+      COUNT(*) FILTER (WHERE collision_severity IN
+        ('fatal','severe injury','other injury','pain','property damage only') AND killed_victims IS NOT NULL AND
         ((collision_severity='fatal') <> (killed_victims > 0))) AS conflicts
+      , COUNT(*) FILTER (WHERE collision_severity='fatal') AS coded_fatal
       FROM collisions""" + where, 'fatal_classification_quality')
     if b.count(q, 'unknown'):
         b.fact('Severity is missing or unrecognized for {value} records in the requested population.',
                'unknown_fatal_classification', q, 'unknown')
-        b.parts.append('The requested fatal-collision measure is unavailable. This is not evidence of zero fatal collisions.')
-        return b.finish('data_quality_blocked')
+        if not b.count(q, 'coded_fatal'):
+            b.parts.append('The requested fatal-collision measure is unavailable. This is not evidence of zero fatal collisions.')
+            return b.finish('data_quality_blocked')
+        b.parts.append('The fatal-collision results below cover only records coded fatal. Unknown severity is excluded '
+                       'from that classification; this is not a complete count of fatal crashes.')
     if b.count(q, 'conflicts'):
         b.fact('{value} records have conflicting severity and fatality counts.',
                'conflicting_fatal_classification', q, 'conflicts')

@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Preserve useful coded-fatal answers when known fatal records coexist with unknown severity. State unknown counts and exclusions; do not convert an unknown population without observed fatal codes into zero. Unknown codes are not counted as known severity/fatality conflicts.
+
 - Encode the SQLite source URI so reserved filename characters cannot make reconciliation hash one source but compare another.
 
 - Use `(case_id, id)` for victim identity; the real snapshot legitimately repeats victim IDs across collisions. Duplicate identities within a collision still fail reconciliation.
