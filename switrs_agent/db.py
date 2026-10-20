@@ -4,13 +4,22 @@ from __future__ import annotations
 
 import os
 import pathlib
+import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 import duckdb
 
 DEFAULT_DB = pathlib.Path(__file__).resolve().parent.parent / "data" / "switrs.duckdb"
+
+
+@lru_cache(maxsize=None)
+def _spill_directory(database_path: str) -> tempfile.TemporaryDirectory:
+    # Connections share a DuckDB instance. Keep its private directory alive until process exit,
+    # rather than removing spill files when just one of several connections closes.
+    return tempfile.TemporaryDirectory(prefix="switrs-spill-")
 
 
 @dataclass
@@ -36,6 +45,9 @@ class Database:
         self.con = duckdb.connect(self.path, read_only=True)
         locked = self.con.execute("SELECT current_setting('lock_configuration')").fetchone()[0]
         if not locked:
+            # Deployment files can be read-only; DuckDB's adjacent .tmp default cannot work there.
+            spill = _spill_directory(str(pathlib.Path(self.path).resolve()))
+            self.con.execute("SET temp_directory = ?", [spill.name])
             self.con.execute(f"SET memory_limit = '{os.environ.get('SWITRS_MEMORY_LIMIT', '4GB')}'")
             self.con.execute(f"SET max_temp_directory_size = '{os.environ.get('SWITRS_TEMP_LIMIT', '4GB')}'")
             self.con.execute(f"SET threads = {int(os.environ.get('SWITRS_THREADS', '4'))}")

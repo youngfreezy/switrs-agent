@@ -22,6 +22,8 @@ This requires Vercel Fluid compute and large-function support (`VERCEL_SUPPORT_L
 
 The uploaded archive is 579 MB. Building and deploying consumes Blob storage/transfer and Vercel function resources. The database is not committed to Git. Local data is excluded from CLI source uploads; the build retrieves the pinned archive.
 
+DuckDB spills large query intermediates into a private system temporary directory, not beside the read-only deployed database. Connections to the same database share that directory for the process lifetime. Temporary storage does not enable database writes or external-file access; memory and temporary-disk caps still apply. The spill regression test forces an external sort with a blocked adjacent directory and confirms that the source database remains unchanged. See [DuckDB temporary-directory configuration](https://duckdb.org/docs/lts/configuration/pragmas#temp-directory-for-spilling-data-to-disk).
+
 ## Configuration
 
 | Variable | Purpose |
