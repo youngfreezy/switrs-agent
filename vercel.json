@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "python3 scripts/fetch_hosted_dataset.py",
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 300,
+      "includeFiles": "{data/**,hosted/**,switrs_agent/**}",
+      "excludeFiles": "{tests/**,evals/**,outputs/**,dist/**,.venv/**,data/*.gz}"
+    }
+  },
+  "rewrites": [{"source": "/(.*)", "destination": "/api/index"}]
+}

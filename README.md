@@ -65,3 +65,7 @@ For dataset requirements, evaluation commands, and review results, read [validat
 - [Usage and integration](docs/usage.md): backends, web chat, direct SQL, and Model Context Protocol (MCP) clients.
 - [Certification contract](docs/certification.md): supported metrics, client requirements, and how to add question forms.
 - [Changelog](CHANGELOG.md): version 0.2 behavior changes.
+
+## Hosted app
+
+The Vercel application uses the same verified dataset and certification code, with a Grasp-inspired interface and browser-local question history. See [hosting and deployment](docs/hosting.md) for setup, access codes, live SQLite checks and rollback.

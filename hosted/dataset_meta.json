@@ -1,0 +1,97 @@
+{
+  "status": "ok",
+  "checked_at": "2026-10-19T18:49:01",
+  "source": {
+    "path": "switrs.sqlite",
+    "bytes": 9943216128,
+    "sha256": "b72ee1f0480832782f05781be17a9ecd0550b27bdce91715553521e2fd7d1360"
+  },
+  "dataset_version": "switrs-v6-b72ee1f04808",
+  "transform_version": "build_duckdb v1: TRY_CAST INT->BIGINT, REAL->DOUBLE, dates->DATE, time->TIME, ''->NULL",
+  "duckdb_file": {
+    "bytes": 1259089920,
+    "mtime_ns": 1792450357656568314,
+    "sha256": "0a21770c2307dc875b0be07391e513daad8d47a22820403c4c826f52a8c8924e"
+  },
+  "allowed_losses": {},
+  "rows": {
+    "collisions": 9424334,
+    "parties": 18669166,
+    "victims": 9639334,
+    "case_ids": 9424334
+  },
+  "coverage": {
+    "min_collision_date": "2001-01-01",
+    "max_collision_date": "2021-06-03"
+  },
+  "key_checks": {
+    "collisions.case_id unique": 0,
+    "parties (case_id, party_number) unique": 0,
+    "parties without collision": 0,
+    "victims without party": 0,
+    "case_ids without collision": 0,
+    "collisions without case_ids": 0
+  },
+  "record_comparison": {
+    "collisions": {
+      "match": true,
+      "compared": 9424334,
+      "mismatched_records": 0,
+      "samples": []
+    },
+    "parties": {
+      "match": true,
+      "compared": 18669166,
+      "mismatched_records": 0,
+      "samples": []
+    },
+    "victims": {
+      "match": true,
+      "compared": 9639334,
+      "mismatched_records": 0,
+      "samples": []
+    },
+    "case_ids": {
+      "match": true,
+      "compared": 9424334,
+      "mismatched_records": 0,
+      "samples": []
+    }
+  },
+  "integrity_version": 2,
+  "source_validation": {
+    "match": true,
+    "problems": []
+  },
+  "aggregates": {
+    "rows_by_year": {
+      "match": true,
+      "diff": {}
+    },
+    "rows_by_severity": {
+      "match": true,
+      "diff": {}
+    },
+    "rows_by_county": {
+      "match": true,
+      "diff": {}
+    },
+    "sum_killed_injured": {
+      "source": [
+        73007,
+        5290670
+      ],
+      "duckdb": [
+        73007,
+        5290670
+      ],
+      "match": true
+    },
+    "victims_by_injury": {
+      "match": true,
+      "diff": {}
+    }
+  },
+  "columns_with_cast_losses": {},
+  "problems": []
+}

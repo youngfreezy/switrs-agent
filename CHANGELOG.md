@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add a separate Vercel app with a Grasp-inspired interface, Claude via AI Gateway, and the full verified dataset packaged with the function.
+- Authenticate saved answers with server signatures and keep question history in each browser.
+- Add hosted HTTP regressions and live SQLite comparison checks.
+
+## Unreleased
+
 ### Fixed
 
 - Answer scoped count paraphrases, reordered county/year clauses, and calendar-year county rankings. Preserve every condition and ranking tie. Support equivalent cellphone-share, drinking-driver, and fatal-hour wording without changing metric definitions.

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f5f1e8"><title>SWITRS · California collision records</title><link rel="stylesheet" href="/assets/style.css"><script src="/assets/app.js" defer></script></head>
+<body>
+<header class="site-header"><a class="wordmark" href="/">switrs<span> / </span></a><span class="label">California collision records</span><span class="snapshot">2001 — June 2021</span></header>
+<main class="workspace">
+<aside class="intro">
+<p class="label">An answer needs evidence.</p>
+<h1>Ask the records.<br>See what holds up.</h1>
+<p class="lede">Explore California’s reported traffic collisions. Every checked answer comes from a verified dataset, with its scope and limitations attached.</p>
+<div class="facts"><div><strong>9.42m</strong><span>Collision records</span></div><div><strong>20 years</strong><span>Plus partial 2021</span></div></div>
+<details id="access"><summary>Agent access</summary><p class="muted">Enter the private access code to run the agent. It stays in this tab and is never saved in your question history.</p><label for="access-code">Access code</label><input id="access-code" type="password" autocomplete="off"><p id="service-status" class="muted" role="status">Checking availability…</p></details>
+<section class="history" aria-labelledby="history-title"><div class="section-head"><h2 id="history-title">Your questions</h2><button id="clear" class="text-button" type="button">Clear</button></div><p class="muted">Saved only in this browser. Saved answers are authenticated when opened.</p><nav id="history" aria-label="Previous questions"></nav></section>
+</aside>
+<section class="reader" aria-labelledby="ask-title">
+<div class="section-head"><div><p class="label">Explore the dataset</p><h2 id="ask-title">What would you like to know?</h2></div><button id="new" class="text-button" type="button">New question</button></div>
+<form id="question-form"><label class="sr-only" for="question">Your question</label><textarea id="question" maxlength="4000" rows="3" placeholder="How many collisions occurred in Orange County in 2019?" required></textarea><div class="composer-footer"><span class="muted">Include the county, year, and measure in each question.</span><button id="send" type="submit">Ask the agent <span aria-hidden="true">↗</span></button><button id="stop" type="button" hidden>Stop</button></div></form>
+<p id="progress" role="status" aria-live="polite"></p>
+<div id="examples"><p class="label">Start with a question</p><div class="example-grid"><button type="button">How many collisions occurred in Orange County in 2019?</button><button type="button">Which county had the most collisions in 2020?</button><button type="button">What percentage of collisions involved a parked vehicle?</button><button type="button">How has COVID-19 changed collisions, if at all?</button></div></div>
+<article id="result" hidden><p id="result-question" class="question-heading"></p><div id="verdict"></div><div id="answer" class="answer"></div><details id="evidence"><summary>Investigation &amp; query evidence <span class="muted">Working notes are unverified</span></summary><div id="trace"></div></details></article>
+<footer><p>Police-reported collisions, not every crash. Coverage ends June 3, 2021. Unsupported questions receive a stated limitation or a request for clarification.</p><a href="https://github.com/youngfreezy/switrs-agent" target="_blank" rel="noreferrer">Method, source code &amp; validation ↗</a></footer>
+</section>
+</main>
+</body></html>
