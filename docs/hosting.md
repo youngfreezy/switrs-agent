@@ -54,7 +54,7 @@ The browser sends the selected answer's signed receipt as `previous`. The server
 
 The agent and metric compiler receive the deterministic resolved question. The UI shows that question beside the original follow-up. Version 2 receipts sign both questions, the answer, and its outcome status, so the next follow-up can use the resolved scope without trusting browser edits or model-written summaries. Existing version 1 receipts still authenticate. Prior numerical answers are never evidence: each follow-up queries the verified snapshot again.
 
-New question, failed requests, and stopped requests clear the active context. Selecting history authenticates and restores that record's context. Limitations receive a “Checked limitation” badge, not a metric-verification badge.
+New question, failed requests, stopped requests, and limitations clear the active context. Selecting an answered history record authenticates and restores that record's context. Limitations receive “Checked limitation” wording in both the badge and answer footer.
 
 Reproduce the hosted adversarial and follow-up suites with `evals/run_hosted_challenges.py --cases evals/hosted_adversarial.json` and `--cases evals/hosted_followups.json`, plus the URL and SQLite source arguments above. Run the full follow-up suite so each named predecessor exists. The suite includes signed-context tampering and preserves independent SQLite SQL for each expected value.
 

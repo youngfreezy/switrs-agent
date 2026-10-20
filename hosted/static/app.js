@@ -41,6 +41,7 @@ function verdict(text, failure = false) {
   node.textContent = text; $('#verdict').replaceChildren(node);
 }
 function setContext(receipt) {
+  if (receipt?.status && !['answered', 'no_matching_records'].includes(receipt.status)) receipt = null;
   previousReceipt = receipt;
   $('#followup-context').textContent = receipt
     ? 'Follow-ups refer to: ' + (receipt.resolved_question || receipt.question)

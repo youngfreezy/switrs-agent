@@ -33,6 +33,8 @@ MAX_QUERIES_PER_TURN = 25
 MAX_QUERIES_PER_SESSION = 200
 CHECK_LABEL = ("Certified metric and scope: the server compiled the bound question using an approved "
                "metric and rendered this answer. Unsupported question forms require clarification.")
+LIMITATION_LABEL = ("Checked limitation: the server verified the stated limitation against its "
+                    "supported definitions and dataset checks. No complete answer to the question was certified.")
 
 
 def load_dataset_meta(db_path: str | os.PathLike | None = None) -> dict:
@@ -328,7 +330,8 @@ class Toolkit:
         parts.append("**Caveats**\n" + "\n".join(caveat_lines))
         if len(evidence) > 2:
             parts.append("**Evidence**\n" + "\n".join(evidence))
-        parts.append(f"_Check: {CHECK_LABEL} Dataset {self.dataset['dataset_version']}, turn {turn_id}._")
+        label = CHECK_LABEL if prepared['status'] in ('answered', 'no_matching_records') else LIMITATION_LABEL
+        parts.append(f"_Check: {label} Dataset {self.dataset['dataset_version']}, turn {turn_id}._")
         final = "\n\n".join(parts)
         turn["final_answer"] = final
         return {"ok": True, "final_answer": final, "claims_checked": len(check["claims"]),

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use limitation wording in the shared answer footer as well as the hosted badge; clear active follow-up context after a limitation.
+
 - Resolve explicit year/county follow-ups from authenticated prior question scopes, preserving all other filters and displaying the resolved question. Distinguish checked limitations from numerical answers in the hosted UI.
 - Reject malformed Unicode receipt signatures normally instead of returning HTTP 500.
 
