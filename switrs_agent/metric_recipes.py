@@ -27,6 +27,9 @@ RECIPE_PARAPHRASES = (
     (r'how many (?:collisions|crashes) involved at least one '
      r'(?:driver who had been drinking|drinking driver)', 'drinking'),
     (r'(?:which|what) hour (?:had|has) the most fatal (?:collisions|crashes)', 'fatal_hour'),
+    (r'among at[- ]fault drivers with known cellphone status, what (?:share|percentage|percent) '
+     r'(?:were using|used) a (?:cellphone|cell phone)', 'cellphone'),
+    (r'at (?:which|what) hour were the most fatal (?:crashes|collisions) recorded', 'fatal_hour'),
 )
 
 

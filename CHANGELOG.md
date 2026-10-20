@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Accept additional whole-question paraphrases for reported traffic accidents, fatal motorcycle counts, calendar years, known-status cellphone shares, and leading fatal-crash hours. Preserve all filters and reject nearby population changes.
+
 - Add a separate Vercel app with a Grasp-inspired interface, Claude via AI Gateway, and the full verified dataset packaged with the function.
 - Authenticate saved answers with server signatures and keep question history in each browser.
 - Add hosted HTTP regressions and live SQLite comparison checks.

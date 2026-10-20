@@ -37,9 +37,10 @@ def main():
     ap.add_argument('--url', required=True)
     ap.add_argument('--source', required=True, type=Path)
     ap.add_argument('--only')
+    ap.add_argument('--cases', type=Path, default=ROOT / 'evals/live_challenges.json')
     ap.add_argument('--output', type=Path, default=ROOT / 'outputs/hosted-challenges.json')
     args = ap.parse_args()
-    cases = json.loads((ROOT / 'evals/live_challenges.json').read_text())
+    cases = json.loads(args.cases.read_text())
     if args.only:
         ids = set(args.only.split(','))
         if ids - {c['id'] for c in cases}:

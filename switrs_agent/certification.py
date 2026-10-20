@@ -45,7 +45,7 @@ def parse_scope(text: str) -> dict | None:
     """Consume every scope clause; never collapse repeated or conflicting scopes."""
     scope = {}
     while text:
-        match = re.match(r' (?:in|during) (?P<year>[0-9]{4})(?= |$)|'
+        match = re.match(r' (?:in|during) (?:the year )?(?P<year>[0-9]{4})(?= |$)|'
                          r' in (?P<place>[a-z ]+? county|california)(?= in | during |$)', text)
         if not match:
             return None
@@ -78,8 +78,8 @@ def parse(question: str) -> Request | None:
         tail = rank['scope']
     else:
         match = re.fullmatch(
-            r'(?:how many |what is the (?:number|count|total number) of |count (?:the )?)'
-            r'(?P<metric>(?:reported |fatal )?(?:motorcycle )?(?:collisions|crashes)|'
+            r'(?:how many |what (?:is|was) the (?:number|count|total number) of |count (?:the )?)'
+            r'(?P<metric>(?:reported )?(?:fatal )?(?:motorcycle )?(?:collisions|crashes|traffic accidents)|'
             r'people (?:were killed|died)|fatalities|deaths)'
             r'(?P<before> (?:happened|occurred|were recorded|were reported|were there))?'
             r'(?P<motorcycle> (?:involved|involving) a motorcycle)?'
@@ -92,7 +92,7 @@ def parse(question: str) -> Request | None:
         motorcycle = 'motorcycle ' in words or bool(match['motorcycle'])
         if (deaths and motorcycle) or ('motorcycle ' in words and match['motorcycle']):
             return None  # Deaths in motorcycle crashes != motorcyclists killed.
-        metric, fatal = 'fatalities' if deaths else 'collision_count', words.startswith('fatal ')
+        metric, fatal = 'fatalities' if deaths else 'collision_count', 'fatal ' in words
         tail = match['scope']
     trailing_scope = parse_scope(tail)
     if trailing_scope is None or leading_scope.keys() & trailing_scope.keys():
