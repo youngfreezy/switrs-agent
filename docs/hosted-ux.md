@@ -1,6 +1,6 @@
 # Hosted UX design and checks
 
-The visual reference is Fareez’s personal portfolio, https://youngfreezy.github.io/ (reviewed October 20, 2026): dark olive `#20231f`, warm paper `#f6f5ef`, lime `#d3f993`, Arial headings with Georgia italic emphasis, thin rules and square controls. No external font or script dependency is added.
+The visual reference is V2 Software, https://v2software.ai/ (reviewed October 20, 2026), not Fareez’s personal portfolio. The palette matches the live site's Tailwind tokens: navy ink `#12203a`, cream paper `#f6f5f1`, rule `#dcd9d0`, secondary text `#4a5163`, green `#1f6b45`, success background/foreground `#e3f0e8`/`#17543a`, and warning background/foreground `#fbebd2`/`#7a4508`. The light hero uses V2's 36px ledger grid (`#e9e6de`/`#eeebe4`), serif headings and navy buttons. This app uses local system font fallbacks (Georgia, Arial and monospace), with no external font or script dependency.
 
 The primary flow is question → access code if needed → checked answer → follow-up. The question and access controls precede history in both document order and mobile layout. Examples prepare an editable, independent question without sending a request. A prior answer’s verified scope appears under the composer only when follow-ups are supported. A limitation has a distinct neutral badge and clears that scope. Invalid credentials reopen and focus the access field without losing the question.
 
