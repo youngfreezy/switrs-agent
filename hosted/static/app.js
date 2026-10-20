@@ -30,6 +30,7 @@ function setBusy(value) {
   busy = value; $('#send').disabled = value; $('#new').disabled = value; $('#clear').disabled = value;
   $('#stop').hidden = !value; $('#question').readOnly = value;
   $('#question-form').setAttribute('aria-busy', String(value));
+  completion.refresh();
 }
 function resetResult(question) {
   $('#examples').hidden = true; $('#result').hidden = false;
@@ -49,6 +50,7 @@ function setContext(receipt) {
   $('#followup-context').textContent = receipt
     ? 'Follow-ups refer to: ' + (receipt.resolved_question || receipt.question) + ' Try “And in 2020?” or change the county.'
     : '';
+  completion.refresh();
 }
 function showResolution(question, receipt) {
   $('#resolved-question').textContent = receipt.resolved_question && receipt.resolved_question !== question
@@ -159,16 +161,58 @@ async function ask(question) {
   } finally { controller = null; setBusy(false); }
 }
 $('#question-form').onsubmit = event => { event.preventDefault(); const question = $('#question').value.trim(); if (question) ask(question); };
-$('#question').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); $('#question-form').requestSubmit(); } });
+$('#question').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && !event.ctrlKey && !event.altKey && !event.metaKey) { event.preventDefault(); $('#question-form').requestSubmit(); } });
 $('#stop').onclick = () => controller?.abort();
-$('#new').onclick = () => { if (busy) return; setContext(null); $('#result').hidden = true; $('#examples').hidden = false; $('#question').value = ''; $('#progress').textContent = ''; $('#question').focus(); };
+$('#new').onclick = () => { if (busy) return; setContext(null); $('#result').hidden = true; $('#examples').hidden = false; $('#question').value = ''; $('#progress').textContent = ''; completion.refresh(); $('#question').focus(); };
 $('#clear').onclick = () => { if (!busy) { history = []; saveHistory(); } };
 document.querySelectorAll('.example-grid button').forEach(button => { button.onclick = () => {
   if (busy) return;
   $('#new').onclick();
   $('#question').value = button.textContent;
+  completion.refresh();
 }; });
 $('#access-code').addEventListener('input', () => $('#access-code').removeAttribute('aria-invalid'));
+// Suggestions are question text only. Accepting one never calls the agent.
+function setupCompletion() {
+  const input = $('#question'), panel = $('#question-suggestion'), button = $('#complete-question');
+  const starters = [...document.querySelectorAll('.example-grid button')].map(node => node.textContent.trim());
+  let dismissedValue = null, composing = false;
+  function candidate() {
+    if (busy || composing || dismissedValue === input.value ||
+        input.selectionStart !== input.value.length || input.selectionEnd !== input.value.length) return '';
+    const options = previousReceipt ? [...starters, 'And in 2020?', 'What about Orange County?'] : starters;
+    const match = options.find(text => text.length > input.value.length && text.toLowerCase().startsWith(input.value.toLowerCase()));
+    return match ? input.value + match.slice(input.value.length) : '';
+  }
+  function refresh() {
+    const text = candidate();
+    panel.hidden = !text;
+    $('#completion-text').textContent = text;
+    button.setAttribute('aria-label', 'Complete question: ' + text);
+  }
+  function accept() {
+    const text = candidate();
+    if (!text || panel.hidden) return false;
+    input.value = text;
+    input.setSelectionRange(text.length, text.length);
+    refresh(); input.focus();
+    return true;
+  }
+  input.addEventListener('input', () => { if (dismissedValue !== input.value) dismissedValue = null; refresh(); });
+  for (const type of ['focus', 'click', 'keyup', 'select']) input.addEventListener(type, refresh);
+  input.addEventListener('compositionstart', () => { composing = true; refresh(); });
+  input.addEventListener('compositionend', () => { composing = false; refresh(); });
+  input.addEventListener('keydown', event => {
+    if (event.isComposing || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+    if (event.key === 'Escape' && !panel.hidden) {
+      dismissedValue = input.value; refresh(); event.preventDefault();
+    } else if (event.key === 'Tab' && accept()) event.preventDefault();
+  });
+  button.onclick = accept;
+  refresh();
+  return {refresh};
+}
+const completion = setupCompletion();
 renderHistory();
 fetch('/api/status').then(response => response.json()).then(status => {
   $('#service-status').textContent = status.ready ? 'Hosted agent configured. Your code is required to run it.' : 'The hosted agent is being configured.';

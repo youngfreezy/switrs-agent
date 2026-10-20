@@ -31,7 +31,8 @@
       <form id="question-form">
         <label for="question">Your question</label>
         <textarea id="question" maxlength="4000" rows="3" placeholder="How many collisions occurred in Orange County in 2019?" aria-describedby="question-help followup-context" required></textarea>
-        <div class="composer-footer"><span id="question-help" class="muted">Enter to ask · Shift + Enter for a new line</span><button id="send" type="submit">Ask the agent <span aria-hidden="true">↗</span></button><button id="stop" class="secondary-button" type="button" hidden>Stop</button></div>
+        <div id="question-suggestion" hidden><button id="complete-question" type="button"><span id="completion-text"></span><kbd>Tab</kbd></button><span class="muted">Suggestion · Tab to complete · Esc to dismiss</span></div>
+        <div class="composer-footer"><span id="question-help" class="muted">Tab completes a suggestion · Enter asks · Shift + Enter adds a line</span><button id="send" type="submit">Ask the agent <span aria-hidden="true">↗</span></button><button id="stop" class="secondary-button" type="button" hidden>Stop</button></div>
       </form>
       <p id="followup-context" class="context" hidden></p>
       <p id="progress" role="status" aria-live="polite"></p>

@@ -4,6 +4,8 @@ The visual reference is V2 Software, https://v2software.ai/ (reviewed October 20
 
 The primary flow is question → access code if needed → checked answer → follow-up. The question and access controls precede history in both document order and mobile layout. Examples prepare an editable, independent question without sending a request. A prior answer’s verified scope appears under the composer only when follow-ups are supported. A limitation has a distinct neutral badge and clears that scope. Invalid credentials reopen and focus the access field without losing the question.
 
+The textarea offers matching starter questions and, after an authenticated answer, year/county follow-ups. Tab appends the visible suggestion without submitting; Escape dismisses it until the text changes. A second Tab, Shift+Tab, an unmatched prefix, a selection or a caret away from the end keeps normal keyboard navigation. Suggestions also have a touch/click button. Completion runs locally and does not infer answers or send model requests. IME composition is left alone.
+
 The presentation preserves the complete server-certified answer, scope, caveats, evidence and receipt verification. Raw model notes and tool results remain behind an explicitly unverified investigation disclosure. No numerical answer is derived or rewritten in the browser.
 
 ## Verification
