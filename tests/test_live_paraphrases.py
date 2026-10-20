@@ -57,3 +57,26 @@ def test_near_paraphrases_do_not_drop_unhandled_conditions(rich_kit, question):
     _, prepared, _ = publish(rich_kit, question, 'partially_available')
     assert prepared['status'] in ('needs_clarification', 'unsupported')
     assert prepared['claims'] == []
+
+
+@pytest.mark.parametrize('question', [
+    'How many fatal motorcycle crashes were recorded in Los Angeles County during 2019?',
+    'In Los Angeles County in 2019, how many fatal crashes involved a motorcycle?',
+    'How many fatal collisions involved a motorcycle in 2019 in Los Angeles County?',
+])
+def test_combined_filters_with_a_distinct_decoy_for_each_predicate(rich_kit, question):
+    # Dropping any one filter adds a different row. The lone target cannot pass by
+    # coincidence just because every fatal motorcycle crash is in the same county/year.
+    rich_kit.db.connection.execute("""
+      INSERT INTO collisions (case_id, county_location, killed_victims, collision_date,
+                              collision_severity, motorcycle_collision) VALUES
+        ('D', 'orange', 1, DATE '2019-04-01', 'fatal', 1),
+        ('E', 'los angeles', 1, DATE '2018-04-01', 'fatal', 1),
+        ('F', 'los angeles', 0, DATE '2019-04-01', 'property damage only', 1),
+        ('G', 'los angeles', 1, DATE '2019-04-01', 'fatal', 0)
+    """)
+    _, p, _ = publish(rich_kit, question)
+    assert p['status'] == 'answered'
+    assert [c['computed'] for c in p['claims'] if c['metric'] == 'collision_count'] == [1]
+    for scope in ('Los Angeles County', '2019', 'motorcycle', 'coded as fatal'):
+        assert scope in p['answer']
