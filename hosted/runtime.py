@@ -3,11 +3,11 @@ import os
 import secrets
 
 
-def make_agent():
+def make_agent(*, oidc_token=None):
     import anthropic
     from switrs_agent.agent import ApiAgent
 
-    token = os.environ.get('AI_GATEWAY_API_KEY') or os.environ.get('VERCEL_OIDC_TOKEN')
+    token = os.environ.get('AI_GATEWAY_API_KEY') or oidc_token or os.environ.get('VERCEL_OIDC_TOKEN')
     if not token:
         raise RuntimeError('AI Gateway authentication is not configured')
     client = anthropic.AsyncAnthropic(api_key=token, base_url='https://ai-gateway.vercel.sh',

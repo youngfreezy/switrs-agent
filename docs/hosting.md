@@ -25,11 +25,11 @@ The uploaded archive is 579 MB. Building and deploying consumes Blob storage/tra
 | Variable | Purpose |
 | --- | --- |
 | `SWITRS_DATASET_URL` | Private Blob URL for the pinned compressed snapshot |
-| `BLOB_READ_WRITE_TOKEN` | Build-only access to the dataset store; supplied by its Vercel integration |
+| `BLOB_READ_WRITE_TOKEN` | Downloads the snapshot during builds; supplied by its Vercel integration |
 | `SWITRS_ACCESS_KEY` | Private shared code required by `/api/chat` |
 | `SWITRS_RECEIPT_KEY` | Independent signing secret, never sent to browsers |
 | `SWITRS_MODEL` | Gateway model ID, currently `anthropic/claude-opus-5-5` |
-| `VERCEL_OIDC_TOKEN` | Vercel-managed AI Gateway identity |
+| `x-vercel-oidc-token` request header | Vercel-managed runtime identity; local development can use `VERCEL_OIDC_TOKEN` |
 | `VERCEL_SUPPORT_LARGE_FUNCTIONS` | Set to `1` for the full dataset package |
 
 Use separate high-entropy access and receipt keys. Rotating the access code does not invalidate receipts; rotating the receipt key does. The app returns 503 if either key is missing. Never put either secret in source, a public environment variable, a URL, or browser storage.
@@ -49,3 +49,5 @@ SWITRS_ACCESS_KEY=... uv run python evals/run_hosted_challenges.py \
 The live evaluator hashes the SQLite source, computes independent oracle queries, checks every certified claim and verifies the saved-answer signature. It does not send expected answers to the model. Check desktop and mobile layouts, a valid answer, an unsupported question, stop/error recovery and saved-history verification in a real browser.
 
 For rollback, promote the previous known-good Vercel deployment. Keep its pinned dataset archive and signing key available. A data update requires full reconciliation, a new digest-named archive and an updated committed manifest before deployment. Do not overwrite an existing snapshot.
+
+Vercel injects the runtime token into each request, not the process environment. The controller passes it directly to the agent factory without mutating shared environment variables. See [Vercel system environment variables](https://vercel.com/docs/environment-variables/system-environment-variables#vercel_oidc_token).

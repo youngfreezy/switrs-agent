@@ -15,7 +15,7 @@ class Agent:
 
 
 def client(agent=None):
-    return TestClient(create_app(agent_factory=lambda: agent or Agent(), access_key='test-access', signing_key='test-signing'))
+    return TestClient(create_app(agent_factory=lambda **kwargs: agent or Agent(), access_key='test-access', signing_key='test-signing'))
 
 
 def events(response):
@@ -84,3 +84,16 @@ def test_provider_failure_after_submission_prevents_publication():
                                      json={'message':'How many collisions?'})
     assert 'provider-secret' not in response.text
     assert events(response)[-1]['kind'] == 'uncertified'
+
+
+def test_runtime_identity_is_passed_per_request_not_shared_in_environment():
+    seen = []
+    def factory(*, oidc_token=None):
+        seen.append(oidc_token)
+        return Agent()
+    app = TestClient(create_app(agent_factory=factory, access_key='test-access', signing_key='sign'))
+    for token in ['request-one', 'request-two']:
+        response = app.post('/api/chat', json={'message':'How many collisions?'}, headers={
+            'Authorization':'Bearer test-access', 'x-vercel-oidc-token':token})
+        assert token not in response.text
+    assert seen == ['request-one', 'request-two']

@@ -1,6 +1,8 @@
 """Stateless hosted HTTP controller. No shared chat IDs, disk history, or CLI login."""
 import asyncio
 import json
+import logging
+import traceback
 import os
 import secrets
 from pathlib import Path
@@ -93,7 +95,7 @@ def create_app(*, agent_factory=make_agent, access_key=None, signing_key=None):
                 async with asyncio.timeout(240):
                     async with slots:
                         yield sse({'kind': 'status', 'text': 'Checking the dataset and investigating your question…'})
-                        agent = agent_factory()
+                        agent = agent_factory(oidc_token=request.headers.get('x-vercel-oidc-token'))
                         async for event in agent.ask(body.message):
                             if await request.is_disconnected():
                                 return
@@ -105,7 +107,11 @@ def create_app(*, agent_factory=make_agent, access_key=None, signing_key=None):
                             yield sse(event)
                             if event.get('kind') == 'done' and event.get('error'):
                                 break
-            except Exception:
+            except Exception as exc:
+                # Log locations and exception type, never prompts, tokens or provider error bodies.
+                frames = [(Path(f.filename).name, f.lineno, f.name)
+                          for f in traceback.extract_tb(exc.__traceback__)]
+                logging.getLogger(__name__).error('Hosted request failed: %s %s', type(exc).__name__, frames)
                 yield sse({'kind': 'done', 'error': 'The request could not finish. Please try again.'})
                 events = []  # An interrupted turn must never retain a publication badge.
             finally:
