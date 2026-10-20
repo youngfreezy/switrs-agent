@@ -112,7 +112,8 @@ def test_api_binds_question_before_model_tool_calls(kit):
 
     async def exercise():
         async with Client(mcp_server.build(kit)) as client:
-            agent = ApiAgent.__new__(ApiAgent)
+            agent = ApiAgent('fixture', model='fixture', max_turns=1,
+                             client=SimpleNamespace(messages=Messages()))
             agent.mcp, agent.toolkit = client, kit
             agent.messages, agent.system, agent.tools = [], '', []
             agent.model, agent.max_turns, agent.session_id = 'fixture', 1, 'fixture'
