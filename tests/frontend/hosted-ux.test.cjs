@@ -117,6 +117,7 @@ test('loading replaces the composer with the submitted question and one cancel c
   const ui=setup();ui.get('#question').value='How many collisions?';
   ui.run("resetResult('How many collisions?');setBusy(true)");
   assert.equal(ui.get('#question-form').hidden,true);
+  assert.equal(ui.get('#examples').hidden,true);
   assert.equal(ui.get('#activity').hidden,false);
   assert.equal(ui.get('#pending-question').textContent,'How many collisions?');
   assert.equal(ui.get('#result').hidden,true);
@@ -125,6 +126,7 @@ test('loading replaces the composer with the submitted question and one cancel c
   ui.run('setBusy(false)');
   assert.equal(ui.get('#activity').hidden,true);
   assert.equal(ui.get('#question-form').hidden,false);
+  assert.equal(ui.get('#examples').hidden,false);
 });
 test('streamed tool events update progress without exposing model prose as an answer',async()=>{
   const ui=setup();ui.run("setBusy(true);showEvent({kind:'tool_call',tool:'run_sql',id:'q',input:{}},new Map())");
@@ -146,6 +148,7 @@ test('a certificate stays hidden until the stream closes, then loading ends',asy
   stream.close();await pending;
   assert.match(ui.get('#answer').innerHTML,/42/);
   assert.equal(ui.get('#activity').hidden,true);assert.equal(ui.get('#result').hidden,false);
+  assert.equal(ui.get('#examples').hidden,false);
 });
 test('cancelling restores the editable question and never publishes a result',async()=>{
   const ui=setup({chat:({signal})=>new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(Object.assign(new Error('Stopped'),{name:'AbortError'}))))});
@@ -154,6 +157,7 @@ test('cancelling restores the editable question and never publishes a result',as
   assert.equal(ui.get('#activity').hidden,true);assert.equal(ui.get('#question-form').hidden,false);
   assert.equal(ui.get('#question').value,'Keep my question');assert.equal(ui.get('#answer').innerHTML,'');
   assert.match(ui.get('#progress').textContent,/Stopped/);
+  assert.equal(ui.get('#examples').hidden,false);
 });
 
 test('focus leaves the disappearing Stop button for the result',async()=>{

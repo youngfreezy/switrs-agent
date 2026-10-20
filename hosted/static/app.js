@@ -33,6 +33,7 @@ function setBusy(value, saved = false) {
   $('#stop').hidden = !value; $('#question').readOnly = value;
   $('#question-form').setAttribute('aria-busy', String(value));
   $('#question-form').hidden = value; $('#access').hidden = value;
+  $('#examples').hidden = value;
   $('#new').hidden = value; $('#progress').hidden = value;
   $('#ask-title').textContent = value ? 'Following the evidence' : $('#result').hidden ? 'What would you like to know?' : 'Your result';
   if (value) {
@@ -44,7 +45,7 @@ function setBusy(value, saved = false) {
   completion.refresh();
 }
 function resetResult(question) {
-  $('#examples').hidden = true; $('#result').hidden = true;
+  $('#result').hidden = true;
   $('#pending-question').textContent = question;
   $('#result-question').textContent = question; $('#verdict').replaceChildren();
   $('#resolved-question').textContent = '';
