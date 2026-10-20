@@ -12,6 +12,21 @@ Preparation returns `answered`, `no_matching_records`, `unsupported`, `needs_cla
 
 Reopened web chats use the same publication rules. A stored badge alone is insufficient: the latest submission must have a valid certificate for the original question and the same final answer. Legacy, edited, revoked, and interrupted submissions appear as unverified working notes. Reading a chat does not alter the saved history.
 
+## Supported count wording
+
+Metric compiler `certified-metrics-v2` accepts whole-question count paraphrases such as
+“In 2019, how many crashes occurred in Orange County?”, “How many people died in
+Orange County during 2020?”, and “How many fatal motorcycle crashes were recorded
+in Los Angeles County during 2019?”. County and year clauses can appear in either
+order. Leading scopes require a comma. `Please count the …` and `What is the number
+of …` forms have the same definitions as `How many …`.
+
+County rankings accept a calendar year and retain ties. Every scope clause must be
+consumed; duplicate years or places, exclusions, ranges, and unimplemented modifiers
+require clarification. “Motorcycle deaths” is not treated as either motorcyclists
+killed or all people killed in motorcycle crashes. Certification binds the original
+wording and never lets the model rewrite it into a supported question.
+
 ## Evidence and metric definitions
 
 Count queries use the collision table directly or filter it with `EXISTS`. Fatalities are the sum of collision-level recorded fatality counts; missing, negative, fractional, or nonfinite values prevent a complete certified total. Integer counts retain exact precision in both prose and evidence. County ranking excludes missing county labels and reports all leading ties. A party is not automatically a vehicle, and fatal crashes are not fatality totals.

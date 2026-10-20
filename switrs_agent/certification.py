@@ -16,7 +16,7 @@ from . import answerability, semantic
 from .metric_recipes import QUESTIONS, RECIPES, fatal_classification
 from .coverage import bounds as coverage_bounds
 
-VERSION = 'certified-metrics-v1'
+VERSION = 'certified-metrics-v2'
 
 
 class CertificationError(ValueError):
@@ -41,28 +41,68 @@ def counties() -> set[str]:
     return set(catalog['collisions']['columns']['county_location']['values'])
 
 
+def parse_scope(text: str) -> dict | None:
+    """Consume every scope clause; never collapse repeated or conflicting scopes."""
+    scope = {}
+    while text:
+        match = re.match(r' (?:in|during) (?P<year>[0-9]{4})(?= |$)|'
+                         r' in (?P<place>[a-z ]+? county|california)(?= in | during |$)', text)
+        if not match:
+            return None
+        if match['year']:
+            key, value = 'year', int(match['year'])
+        else:
+            key, value = 'place', match['place']
+            if value != 'california' and value.removesuffix(' county') not in counties():
+                return None
+        if key in scope:
+            return None
+        scope[key] = value
+        text = text[match.end():]
+    return scope
+
+
 def parse(question: str) -> Request | None:
     text = normalize(question)
-    if text in ('which county has the most collisions', 'which county has the most crashes'):
-        return Request('top_county')
-    match = re.fullmatch(
-        r'how many (?P<metric>(?:reported |fatal )?(?:collisions|crashes)|people were killed|fatalities|deaths)'
-        r'(?: (?:happened|occurred|were recorded))?'
-        r'(?P<motorcycle> involved a motorcycle)?'
-        r'(?: in (?P<county>[a-z ]+?) county| in (?P<state>california))?'
-        r'(?: in (?P<year>\d{4}))?', text)
-    if not match:
+    if text.startswith('please '):
+        text = text.removeprefix('please ')
+    leading_scope = {}
+    # A leading scope has an explicit comma boundary. Arbitrary words are never stripped.
+    if text.startswith(('in ', 'during ')):
+        front, comma, text = text.partition(', ')
+        if not comma or not (leading_scope := parse_scope(' ' + front)):
+            return None
+    rank = re.fullmatch(r'which county (?:has|had|recorded) the most (?:collisions|crashes)(?P<scope>.*)', text)
+    if rank:
+        metric, fatal, motorcycle = 'top_county', False, False
+        tail = rank['scope']
+    else:
+        match = re.fullmatch(
+            r'(?:how many |what is the (?:number|count|total number) of |count (?:the )?)'
+            r'(?P<metric>(?:reported |fatal )?(?:motorcycle )?(?:collisions|crashes)|'
+            r'people (?:were killed|died)|fatalities|deaths)'
+            r'(?P<before> (?:happened|occurred|were recorded|were reported|were there))?'
+            r'(?P<motorcycle> (?:involved|involving) a motorcycle)?'
+            r'(?P<after> (?:happened|occurred|were recorded|were reported))?'
+            r'(?P<scope>.*)', text)
+        if not match or (match['before'] and match['after']):
+            return None
+        words = match['metric']
+        deaths = words in ('people were killed', 'people died', 'fatalities', 'deaths')
+        motorcycle = 'motorcycle ' in words or bool(match['motorcycle'])
+        if (deaths and motorcycle) or ('motorcycle ' in words and match['motorcycle']):
+            return None  # Deaths in motorcycle crashes != motorcyclists killed.
+        metric, fatal = 'fatalities' if deaths else 'collision_count', words.startswith('fatal ')
+        tail = match['scope']
+    trailing_scope = parse_scope(tail)
+    if trailing_scope is None or leading_scope.keys() & trailing_scope.keys():
         return None
-    county = match['county']
-    if county and county not in counties():
+    scope = leading_scope | trailing_scope
+    place = scope.get('place')
+    county = place.removesuffix(' county') if place and place != 'california' else None
+    if metric == 'top_county' and county:
         return None
-    metric = match['metric']
-    deaths = metric in ('people were killed', 'fatalities', 'deaths')
-    if deaths and match['motorcycle']:
-        return None  # Deaths in motorcycle crashes != motorcyclists killed.
-    return Request('fatalities' if deaths else 'collision_count', county,
-                   int(match['year']) if match['year'] else None,
-                   metric.startswith('fatal '), bool(match['motorcycle']))
+    return Request(metric, county, scope.get('year'), fatal, motorcycle)
 
 
 class Builder:
@@ -170,8 +210,11 @@ def prepare(toolkit, turn_id: str) -> dict:
             return unavailable
     b = Builder(toolkit, turn_id)
     if request.metric == 'top_county':
+        year_filter = f' AND YEAR(collision_date) = {request.year}' if request.year is not None else ''
+        year_label = f' in {request.year}' if request.year is not None else ''
         q = b.query('SELECT county_location, COUNT(*) AS n FROM collisions '
-                    'WHERE county_location IS NOT NULL GROUP BY 1 ORDER BY n DESC, county_location', 'top_county')
+                    'WHERE county_location IS NOT NULL' + year_filter +
+                    ' GROUP BY 1 ORDER BY n DESC, county_location', 'top_county')
         if not q['rows']:
             b.parts.append('No collisions with a recorded county matched; a county ranking is unavailable.')
             return b.finish('no_matching_records')
@@ -180,11 +223,11 @@ def prepare(toolkit, turn_id: str) -> dict:
         for i, (county, _) in winners:
             if county not in counties():
                 raise CertificationError('The result contains an unrecognized county label.')
-            template = county.title() + ' had {value} reported collisions'
+            template = county.title() + ' had {value} reported collisions' + year_label
             template += ', tied for the most among recorded counties.' if len(winners) > 1 else ', the most among recorded counties.'
             b.fact(template, 'collision_count_by_county', q, row=i)
         b.parts.append('This compares raw counts among records with a known county, not per-capita risk.')
-        return b.finish(interpretation='Rank known counties by reported collision count; include ties.')
+        return b.finish(interpretation='Rank known counties by reported collision count' + year_label + '; include ties.')
     filters = []
     scope = ' across the available snapshot'
     if request.county:
