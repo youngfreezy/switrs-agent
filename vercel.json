@@ -8,5 +8,5 @@
       "excludeFiles": "{tests/**,evals/**,outputs/**,dist/**,.venv/**,data/*.gz}"
     }
   },
-  "rewrites": [{"source": "/(.*)", "destination": "/api/index"}]
+  "framework": "fastapi"
 }

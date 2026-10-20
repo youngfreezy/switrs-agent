@@ -33,7 +33,7 @@ function setBusy(value) {
 function resetResult(question) {
   $('#examples').hidden = true; $('#result').hidden = false;
   $('#result-question').textContent = question; $('#verdict').replaceChildren();
-  $('#answer').replaceChildren(); $('#trace').replaceChildren(); $('#evidence').open = false;
+  $('#answer').replaceChildren(); $('#trace').replaceChildren(); $('#evidence').open = false; $('#evidence').hidden = false;
 }
 function verdict(text, failure = false) {
   const node = document.createElement('p'); node.className = 'badge' + (failure ? ' failure' : '');
@@ -51,9 +51,9 @@ function renderHistory() {
     button.onclick = async () => {
       if (busy) return;
       resetResult(record.question); $('#progress').textContent = 'Authenticating the saved answer…';
-      setBusy(true);
+      setBusy(true); $('#stop').hidden = true; $('#evidence').hidden = true;
       try {
-        const response = await fetch('/api/verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(record.receipt)});
+        const response = await fetch('/api/verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(record.receipt), signal:AbortSignal.timeout(15000)});
         const checked = response.ok && (await response.json()).valid === true;
         if (!checked || record.receipt.question !== record.question) throw new Error('Saved answer could not be authenticated. Ask the question again.');
         $('#answer').innerHTML = md(record.receipt.answer);

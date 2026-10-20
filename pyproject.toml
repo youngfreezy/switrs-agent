@@ -36,3 +36,6 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.vercel]
+entrypoint = "api.index:app"
