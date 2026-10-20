@@ -17,6 +17,58 @@ uv run python scripts/compare_engines.py --sqlite PATH      # same queries on bo
 
 Number checks are sign-aware and require the entity in the same sentence. For traced runs, the last submission must have both `ok: true` and `certified: true`. Failed or missing answers and unknown `--only` selectors cause a nonzero exit status. The grader reads its submitted body, so server-added caveats and evidence cannot satisfy answer checks. Targeted checks also reject direct causal/bias verdicts and invented counts written as words. External answers without traces have unknown certification. If the golden SQL's values drift from `expected_v1.json`, the run stops until someone reviews the change and approves it with `--freeze`.
 
+## Live-agent validation on 2026-10-19
+
+The live follow-up used `claude-opus-5-5`, the actual MCP server and certificate
+publisher, and independent read-only queries on the original SQLite source. See
+[the challenge runner](live-challenges.md) for reproducible commands and oracle SQL.
+
+- Eight live questions initially received false refusals: fronted/reordered scopes,
+  fatal motorcycle wording, “people died,” year-specific county ranking, and three
+  equivalents for cellphone share, drinking-driver counts, and fatal-hour ranking.
+  The fixes retain the original question and consume every requested condition.
+- **29 distinct live challenges pass after fixes:** 21 supported measurements
+  (including a genuine zero) and eight limitations with no measurement claims.
+  This combines the 23-case run at `474bffd`, targeted retests at `2d03e36`, and the
+  verified zero case at `a05bcdc`; it is not a claim that all cases ran in one batch.
+- **Three production SDK chat turns** passed: 29,795 Orange County collisions in
+  2019, a clarification for an implicit follow-up, and 21,024 in an explicit 2020
+  question. The totals match SQLite and the requests have distinct identities.
+- **Three production HTTP chat/history checks** passed. Two numerical answers
+  matched SQLite and reloaded unchanged. On an injected third turn, the model
+  referenced an earlier answer without a new submission; the app correctly left
+  it uncertified and retained it only as unverified working notes.
+- **599 regression tests passed, no skips; package build passed.** Tests include
+  decoy records that expose the loss of any combined county/year/severity/motorcycle
+  predicate, ranking ties, nearby unsupported forms, oracle-grader failures, and
+  model claims of prior certification. The final code was tested at `2d03e36`;
+  subsequent changes only add the zero case and validation documentation.
+
+Examples checked against SQLite:
+
+| Question population | Certified result |
+|---|---:|
+| Fatal motorcycle crashes, Los Angeles County, 2019 | 107 |
+| Recorded fatalities, Orange County, 2020 | 156 |
+| Highest county collision count, 2020: Los Angeles | 111,176 |
+| Collisions, Nevada County (California), 2019 | 1,205 |
+| Fatal motorcycle crashes, Alpine County, 2018 | 1 |
+| Fatal motorcycle crashes, Alpine County, 2015 | 0 |
+| Collisions with at least one driver recorded as drinking | 904,085 |
+
+Cellphone, belt-outcome, and COVID-period checks also compare every numerical claim
+with SQLite, including excluded unknowns and signed percentage changes. Counts have
+no tolerance; percentage comparisons permit only floating-point rounding noise.
+The source hash is `b72ee1f0480832782f05781be17a9ecd0550b27bdce91715553521e2fd7d1360`;
+the analytical hash remains
+`0a21770c2307dc875b0be07391e513daad8d47a22820403c4c826f52a8c8924e`.
+
+No incorrect numerical certificate was observed in these runs. This is a regression
+suite, not a held-out general-language benchmark. Unsupported conditions and implicit
+follow-ups still require an explicit supported question. A sparse-case control
+initially expected to be zero actually contained one record; the oracle and agent
+both returned one. A separate source-verified zero case was then added.
+
 ## Recorded results
 
 The post-review hardening run on 2026-10-19 recorded:
