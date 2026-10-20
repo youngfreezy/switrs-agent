@@ -46,7 +46,7 @@
           <div id="question-ghost" aria-hidden="true" hidden><span id="completion-prefix"></span><wbr><span id="completion-text"></span></div>
           <textarea id="question" maxlength="4000" rows="3" placeholder="Ask about a place, a year, or a trend…" aria-autocomplete="inline" aria-describedby="question-help followup-context completion-description" required></textarea>
         </div>
-        <div class="completion-slot"><div id="question-suggestion" hidden><button id="complete-question" type="button" tabindex="-1"><kbd>Tab</kbd> Complete suggestion</button><span aria-hidden="true">Esc to dismiss</span></div></div>
+        <div class="completion-slot"><div id="question-suggestion" hidden><button id="complete-question" type="button" tabindex="-1"><kbd>Tab</kbd> Accept AI suggestion</button><span aria-hidden="true">Esc to dismiss</span></div><span id="completion-status" class="muted" role="status" hidden></span></div>
         <span id="completion-description" class="sr-only"></span>
         <div class="composer-footer"><span id="question-help" class="muted">Enter to ask · Shift + Enter for a new line</span><button id="send" type="submit">Ask the agent <span aria-hidden="true">↗</span></button></div>
       </form>

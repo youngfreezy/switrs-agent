@@ -28,8 +28,9 @@ The uploaded archive is 579 MB. Building and deploying consumes Blob storage/tra
 | --- | --- |
 | `SWITRS_DATASET_URL` | Private Blob URL for the pinned compressed snapshot |
 | `BLOB_READ_WRITE_TOKEN` | Downloads the snapshot during builds; supplied by its Vercel integration |
-| `SWITRS_ACCESS_KEY` | Private shared code required by `/api/chat` |
+| `SWITRS_ACCESS_KEY` | Private shared code required by `/api/chat` and `/api/completions` |
 | `SWITRS_RECEIPT_KEY` | Independent signing secret, never sent to browsers |
+| `SWITRS_COMPLETION_MODEL` | Autocomplete model; defaults to `anthropic/claude-haiku-4.5` |
 | `SWITRS_MODEL` | Gateway model ID, currently `anthropic/claude-opus-5-5` |
 | `x-vercel-oidc-token` request header | Vercel-managed runtime identity; local development can use `VERCEL_OIDC_TOKEN` |
 | `VERCEL_SUPPORT_LARGE_FUNCTIONS` | Set to `1` for the full dataset package |
@@ -63,3 +64,12 @@ Reproduce the hosted adversarial and follow-up suites with `evals/run_hosted_cha
 For rollback, promote the previous known-good Vercel deployment. Keep its pinned dataset archive and signing key available. A data update requires full reconciliation, a new digest-named archive and an updated committed manifest before deployment. Do not overwrite an existing snapshot.
 
 Vercel injects the runtime token into each request, not the process environment. The controller passes it directly to the agent factory without mutating shared environment variables. See [Vercel system environment variables](https://vercel.com/docs/environment-variables/system-environment-variables#vercel_oidc_token).
+
+
+### LLM autocomplete contract
+
+`POST /api/completions` accepts `{ "prefix": "How many fatal motorcycle cra", "previous": null }` with the same Bearer access code as chat. The prefix is preserved byte-for-byte, is 4–1,000 characters, and must be a single line. `previous` may be an existing signed receipt; forged receipts return 422. Only answered or no-matching-records receipts supply context. The model receives the resolved prior question and at most 2,000 characters of its checked answer, plus the deployed manifest's coverage, complete years, county vocabulary and supported forms. It never receives access codes, signing secrets, browser history or SQL tools.
+
+The response is `{ "prefix": "…", "completion": "…" }`. An empty completion means no suggestion. The provider returns a structured suffix through `complete_question`; the server appends it to the exact draft and validates the complete question against the existing count compiler or descriptive recipes. At most 240 characters may be appended. Unsupported filters, unknown counties, partial/out-of-range whole years, markup, extra prose and truncated model output are discarded. A suggestion cannot issue a certificate or run a query. Only explicit submission enters the normal question-binding and certification flow.
+
+Each worker allows two autocomplete requests independently of chat, without queuing excess requests. The provider has a five-second timeout, no retries and 256 output tokens; the route has a six-second deadline. Capacity exhaustion and provider failure return an empty suggestion. These worker limits and browser debounce are not an account-wide rate limiter; retain AI Gateway budgets for spending control. The default fast model uses the existing per-request Vercel OIDC identity, with no additional client credentials. See [Gateway Anthropic Messages API](https://vercel.com/docs/ai-gateway/sdks-and-apis/anthropic-messages-api).

@@ -69,6 +69,7 @@ textarea:focus-visible { outline: none; }
 #question-ghost { position: absolute; inset: 0; overflow: hidden; pointer-events: none; color: #697386; }
 #completion-prefix { color: transparent; }
 .completion-slot { height: 44px; margin-top: 4px; }
+#completion-status { display: flex; align-items: center; height: 44px; font-size: 11px; }
 #question-suggestion { display: flex; align-items: center; gap: 12px; height: 44px; color: var(--muted); font-size: 11px; }
 #complete-question { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--accent); font-size: 11px; }
 #complete-question:hover { color: var(--ink); }

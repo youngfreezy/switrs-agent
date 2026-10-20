@@ -15,6 +15,7 @@ from switrs_agent.publication import latest_certified_result
 from . import receipts
 from .followups import resolve
 from .runtime import make_agent
+from .completions import context_for, generate_completion, validate_completion, while_connected
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,12 +47,45 @@ def sse(event):
     return 'data: ' + json.dumps(event, default=str) + '\n\n'
 
 
-def create_app(*, agent_factory=make_agent, access_key=None, signing_key=None):
+class CompletionRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    prefix: str = Field(min_length=4, max_length=1000)
+    previous: Receipt | None = None
+
+    @field_validator('prefix')
+    @classmethod
+    def valid_prefix(cls, value):
+        if len(value.strip()) < 4 or any(ord(c) < 32 for c in value):
+            raise ValueError('Enter a single-line question prefix')
+        return value
+
+
+class CompletionResponse(BaseModel):
+    prefix: str
+    completion: str
+
+
+def create_app(*, agent_factory=make_agent, completion_fn=generate_completion,
+               access_key=None, signing_key=None):
     app = FastAPI(title='SWITRS hosted agent', docs_url=None, redoc_url=None, openapi_url=None)
     access_key = access_key if access_key is not None else os.getenv('SWITRS_ACCESS_KEY', '')
     signing_key = signing_key if signing_key is not None else os.getenv('SWITRS_RECEIPT_KEY', '')
     # This bounds one worker; account-level spend limits are enforced by AI Gateway.
     slots = asyncio.Semaphore(2)
+    completion_slots = asyncio.Semaphore(2)
+
+    def authorize(request):
+        if not access_key or not signing_key:
+            raise HTTPException(503, 'The agent is not configured yet.')
+        supplied = request.headers.get('authorization', '')
+        if not secrets.compare_digest(supplied.encode(), ('Bearer ' + access_key).encode()):
+            raise HTTPException(401, 'Enter the access code to ask a question.')
+
+    def authenticate_previous(record):
+        previous = record.model_dump(exclude_none=True) if record else None
+        if previous is not None and not receipts.verify(previous, signing_key):
+            raise HTTPException(422, 'The prior answer could not be authenticated. Ask a complete question.')
+        return previous
 
     @app.middleware('http')
     async def security_headers(request, call_next):
@@ -84,18 +118,34 @@ def create_app(*, agent_factory=make_agent, access_key=None, signing_key=None):
     def verify(record: Receipt):
         return {'valid': receipts.verify(record.model_dump(exclude_none=True), signing_key)}
 
+    @app.post('/api/completions', response_model=CompletionResponse)
+    async def complete(body: CompletionRequest, request: Request):
+        authorize(request)
+        previous = authenticate_previous(body.previous)
+        empty = {'prefix': body.prefix, 'completion': ''}
+        if body.prefix.rstrip().endswith('?') or completion_slots.locked():
+            return empty
+        try:
+            async with asyncio.timeout(6):
+                async with completion_slots:
+                    if await request.is_disconnected():
+                        return empty
+                    context = context_for(previous)
+                    text = await while_connected(request, completion_fn(
+                        prefix=body.prefix, context=context,
+                        oidc_token=request.headers.get('x-vercel-oidc-token')))
+                    return {'prefix': body.prefix,
+                            'completion': validate_completion(body.prefix, text, context)}
+        except Exception as exc:
+            logging.getLogger(__name__).warning('Autocomplete unavailable: %s', type(exc).__name__)
+            return empty
+
     @app.post('/api/chat')
     async def chat(body: Question, request: Request):
-        if not access_key or not signing_key:
-            raise HTTPException(503, 'The agent is not configured yet.')
-        supplied = request.headers.get('authorization', '')
-        if not secrets.compare_digest(supplied.encode(), ('Bearer ' + access_key).encode()):
-            raise HTTPException(401, 'Enter the access code to ask a question.')
+        authorize(request)
         question = body.message
-        if body.previous is not None:
-            previous = body.previous.model_dump(exclude_none=True)
-            if not receipts.verify(previous, signing_key):
-                raise HTTPException(422, 'The prior answer could not be authenticated. Ask a complete question.')
+        previous = authenticate_previous(body.previous)
+        if previous is not None:
             question = resolve(question, previous.get('resolved_question') or previous['question'])
 
         async def stream():
