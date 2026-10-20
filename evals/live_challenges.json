@@ -310,7 +310,7 @@
     ]
   },
   {
-    "id": "zero_control",
+    "id": "sparse_control",
     "question": "How many fatal motorcycle crashes in Alpine County in 2018?",
     "checks": [
       {
@@ -331,6 +331,16 @@
     "contains": [
       "Nevada County",
       "2019"
+    ]
+  },
+  {
+    "id": "zero_control",
+    "question": "How many fatal motorcycle crashes in Alpine County in 2015?",
+    "checks": [
+      {
+        "metric": "collision_count",
+        "sql": "SELECT COUNT(*) FROM collisions WHERE county_location='alpine' AND substr(collision_date,1,4)='2015' AND collision_severity='fatal' AND motorcycle_collision=1"
+      }
     ]
   }
 ]
