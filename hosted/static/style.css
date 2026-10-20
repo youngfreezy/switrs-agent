@@ -90,6 +90,11 @@ textarea:focus-visible { outline: none; }
 .example-grid button { border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; padding: 16px 20px 16px 0; min-height: 72px; font-size: 13px; line-height: 1.6; position: relative; }
 .example-grid button::after { content: '↗'; position: absolute; right: 0; top: 17px; color: var(--muted); }
 .example-grid button:hover { border-color: var(--ink); }
+#related { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+.related-help { font-size: 13px; margin: 8px 0 12px; }
+.related-questions { display: grid; gap: 8px; }
+.related-questions button { text-align: left; min-height: 44px; padding: 12px 16px; font-size: 13px; line-height: 1.6; color: var(--ink); background: #edf2ec; border: 1px solid #d7e2d5; border-radius: 8px; overflow-wrap: anywhere; }
+.related-questions button:hover { background: #e3eddf; border-color: var(--accent); }
 .sidebar { border-left: 1px solid var(--line); padding-left: 28px; }
 .guide .label { color: var(--muted); margin-bottom: 14px; }
 .guide h2 { font-size: 27px; margin-bottom: 20px; }

@@ -43,6 +43,7 @@ function setBusy(value, saved = false) {
     if (moveFocus) ($('#result').hidden ? $('#question') : $('#result')).focus({preventScroll:true});
   }
   completion.refresh();
+  suggestions.refresh();
 }
 function resetResult(question) {
   $('#result').hidden = true;
@@ -64,6 +65,7 @@ function setContext(receipt) {
     ? 'Follow-ups refer to: ' + (receipt.resolved_question || receipt.question) + ' Try “And in 2020?” or change the county.'
     : '';
   completion.refresh();
+  suggestions.refresh();
 }
 function showResolution(question, receipt) {
   $('#resolved-question').textContent = receipt.resolved_question && receipt.resolved_question !== question
@@ -177,16 +179,18 @@ async function ask(question) {
 $('#question-form').onsubmit = event => { event.preventDefault(); const question = $('#question').value.trim(); if (question) ask(question); };
 $('#question').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && !event.ctrlKey && !event.altKey && !event.metaKey) { event.preventDefault(); $('#question-form').requestSubmit(); } });
 $('#stop').onclick = () => controller?.abort();
-$('#new').onclick = () => { if (busy) return; setContext(null); $('#result').hidden = true; $('#ask-title').textContent = 'What would you like to know?'; $('#examples').hidden = false; $('#question').value = ''; $('#progress').textContent = ''; completion.refresh(); $('#question').focus(); };
+$('#new').onclick = () => { if (busy) return; setContext(null); $('#result').hidden = true; $('#ask-title').textContent = 'What would you like to know?'; $('#examples').hidden = false; $('#question').value = ''; $('#progress').textContent = ''; completion.refresh(); suggestions.refresh(); $('#question').focus(); };
 $('#clear').onclick = () => { if (!busy) { history = []; saveHistory(); } };
 document.querySelectorAll('.example-grid button').forEach(button => { button.onclick = () => {
   if (busy) return;
   $('#new').onclick();
   $('#question').value = button.textContent;
   completion.refresh();
+  suggestions.refresh();
 }; });
 $('#access-code').addEventListener('input', () => $('#access-code').removeAttribute('aria-invalid'));
 const completion = setupCompletion();
+const suggestions = setupSuggestions();
 renderHistory();
 fetch('/api/status').then(response => response.json()).then(status => {
   $('#service-status').textContent = status.ready ? 'Hosted agent configured. Your code is required to run it.' : 'The hosted agent is being configured.';

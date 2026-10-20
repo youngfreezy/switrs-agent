@@ -5,7 +5,7 @@
   <meta name="theme-color" content="#f6f5f1">
   <meta name="description" content="Explore California collision records with answers checked against the dataset, explicit limits, and inspectable evidence.">
   <title>SWITRS · Ask the records</title>
-  <link rel="stylesheet" href="/assets/style.css"><script src="/assets/activity.js" defer></script><script src="/assets/completion.js" defer></script><script src="/assets/app.js" defer></script>
+  <link rel="stylesheet" href="/assets/style.css"><script src="/assets/activity.js" defer></script><script src="/assets/completion.js" defer></script><script src="/assets/suggestions.js" defer></script><script src="/assets/app.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#question">Skip to question</a>
@@ -56,7 +56,12 @@
         <button type="button">Which county had the most collisions in 2020?</button>
         <button type="button">What percentage of collisions involved a parked vehicle?</button>
         <button type="button">How has COVID-19 changed collisions, if at all?</button>
-      </div></div>
+      </div>
+      <section id="related" aria-labelledby="related-title" hidden>
+        <p id="related-title" class="label">Related questions</p>
+        <p class="muted related-help">Based on your question. Select one to edit before asking.</p>
+        <div id="related-questions" class="related-questions"></div>
+      </section></div>
 
     </section>
     <aside class="sidebar" aria-label="About the dataset and your saved questions">

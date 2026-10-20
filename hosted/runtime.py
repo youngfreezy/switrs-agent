@@ -3,12 +3,16 @@ import os
 import secrets
 
 
-def gateway_client(*, oidc_token=None, timeout=90):
-    import anthropic
+def gateway_token(oidc_token=None):
     token = os.environ.get('AI_GATEWAY_API_KEY') or oidc_token or os.environ.get('VERCEL_OIDC_TOKEN')
     if not token:
         raise RuntimeError('AI Gateway authentication is not configured')
-    return anthropic.AsyncAnthropic(api_key=token, base_url='https://ai-gateway.vercel.sh',
+    return token
+
+
+def gateway_client(*, oidc_token=None, timeout=90):
+    import anthropic
+    return anthropic.AsyncAnthropic(api_key=gateway_token(oidc_token), base_url='https://ai-gateway.vercel.sh',
                                     timeout=timeout, max_retries=0)
 
 

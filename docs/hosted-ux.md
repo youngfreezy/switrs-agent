@@ -10,6 +10,8 @@ Tab appends the visible suggestion without submitting; Escape cancels both visib
 
 The presentation preserves the complete server-certified answer, scope, caveats, evidence and receipt verification. Raw model notes and tool results remain behind an explicitly unverified investigation disclosure. No numerical answer is derived or rewritten in the browser.
 
+Jev ranks optional related questions below the four unchanged starter prompts. These use explicit scope and only populate the editor when selected. Ranking runs through Vercel AI Gateway and does not affect Tab completion, answer generation or certification. See [the contextual suggestions contract](contextual-suggestions.md) for failure behavior and live relevance checks.
+
 ## Streaming and loading states
 
 During a request, replace the composer with a compact submitted-question card, animated thinking dots, one Stop control and a live progress feed. The Understand / Query / Verify highlight follows actual tool calls; it does not imply a percentage or a completed stage. Display only known, plain-language descriptions of tool activity, never model prose as a pending answer. Show at most three recent updates and respect reduced-motion preferences.

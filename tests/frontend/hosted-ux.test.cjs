@@ -3,7 +3,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
-function setup({chat, suggest} = {}) {
+function setup({chat, suggest, rank} = {}) {
   const nodes = new Map(); let focused = null;
   function element() { return {value:'', textContent:'', innerHTML:'', get hidden(){return this._hidden??false}, set hidden(value){this._hidden=value;if(value && focused===this)focused=null}, disabled:false, children:[], listeners:{}, selectionStart:0, selectionEnd:0,
     setSelectionRange(start,end){this.selectionStart=start;this.selectionEnd=end},
@@ -25,6 +25,10 @@ function setup({chat, suggest} = {}) {
     setTimeout(fn){const id=++timerId;timers.set(id,fn);return id},clearTimeout(id){timers.delete(id)},
     localStorage:{getItem:()=>null,setItem(){}},AbortController,AbortSignal,TextDecoder,
     fetch:async (url,options)=>{calls.push({url,options});
+      if(url==='/api/suggestions') {
+        const body=JSON.parse(options.body);
+        return {ok:true,json:async()=>({draft:body.draft,source:'jev',suggestions:rank ? await rank(body) : []})};
+      }
       if(url==='/api/completions') {
         const body=JSON.parse(options.body);
         const completion=await (suggest || fixtureSuggestion)(body);
@@ -34,6 +38,7 @@ function setup({chat, suggest} = {}) {
       ? {json:async()=>({ready:true})} : chat ? chat(options) : {ok:false,status:401,json:async()=>({detail:'Enter the access code to ask a question.'})};}});
   if(fs.existsSync('hosted/static/activity.js'))vm.runInContext(fs.readFileSync('hosted/static/activity.js','utf8'),context);
   if(fs.existsSync('hosted/static/completion.js'))vm.runInContext(fs.readFileSync('hosted/static/completion.js','utf8'),context);
+  if(fs.existsSync('hosted/static/suggestions.js'))vm.runInContext(fs.readFileSync('hosted/static/suggestions.js','utf8'),context);
   vm.runInContext(fs.readFileSync('hosted/static/app.js','utf8'),context);
   return {get,example,calls,edits,flush:async()=>{const batch=[...timers.values()];timers.clear();for(const fn of batch)await fn()},run:code=>vm.runInContext(code,context)};
 }
@@ -44,6 +49,49 @@ test('examples prepare a fresh question without sending or inheriting a prior sc
   assert.equal(ui.get('#question').focused,true);
   assert.equal(ui.calls.some(x=>x.url==='/api/chat'),false);
   assert.equal(ui.run('previousReceipt'),null);
+});
+
+test('related suggestions supplement starters and prepare an explicit fresh question without submitting',async()=>{
+  const question='How many fatalities in Orange County in 2019?';
+  const ui=setup({rank:()=>[question]});
+  ui.run("setContext({signature:'signed',status:'answered',question:'How many collisions in Orange County in 2019?'})");
+  await ui.flush();
+  assert.equal(ui.get('#related').hidden,false);
+  assert.equal(ui.get('#examples').hidden,false);
+  const button=ui.get('#related-questions').children[0];
+  assert.equal(button.textContent,question);button.onclick();
+  assert.equal(ui.get('#question').value,question);
+  assert.equal(ui.run('previousReceipt'),null);
+  assert.equal(ui.calls.some(x=>x.url==='/api/chat'),false);
+  assert.equal(ui.get('#question').focused,true);
+});
+
+test('related requests debounce edits and discard late results after new question, auth or busy changes',async()=>{
+  let release;const ui=setup({rank:()=>new Promise(r=>release=r)});
+  editQuestion(ui,'fat');editQuestion(ui,'fatalities');
+  assert.equal(ui.calls.some(x=>x.url==='/api/suggestions'),false);
+  let pending=ui.flush();await new Promise(r=>setImmediate(r));
+  ui.get('#new').onclick();release(['How many fatalities in California?']);await pending;
+  assert.equal(ui.get('#related').hidden,true);
+  editQuestion(ui,'fatalities');pending=ui.flush();await new Promise(r=>setImmediate(r));
+  ui.run('setBusy(true)');release(['How many fatalities in California?']);await pending;
+  assert.equal(ui.get('#related').hidden,true);
+  ui.run('setBusy(false)');pending=ui.flush();await new Promise(r=>setImmediate(r));
+  ui.get('#access-code').value='changed';
+  for(const fn of ui.get('#access-code').listeners.input)fn({});
+  release(['How many fatalities in California?']);await pending;
+  assert.equal(ui.get('#related').hidden,true);
+});
+
+test('unavailable or malformed related suggestions leave starter buttons and Tab completion usable',async()=>{
+  const ui=setup({rank:()=>{throw new Error('offline')}});
+  await typeQuestion(ui,'How many');
+  assert.equal(ui.get('#related').hidden,true);
+  assert.equal(ui.get('#examples').hidden,false);
+  assert.equal(key(ui,'Tab').prevented,true);
+  const invalid=setup({rank:()=>['<script>bad</script>',42,'No question mark']});
+  await typeQuestion(invalid,'fatalities');
+  assert.equal(invalid.get('#related').hidden,true);
 });
 test('invalid access code opens the field and keeps the question available to retry',async()=>{
   const ui=setup();ui.get('#access-code').value='wrong';ui.get('#access').open=false;

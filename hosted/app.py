@@ -6,6 +6,7 @@ import traceback
 import os
 import secrets
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
@@ -16,6 +17,7 @@ from . import receipts
 from .followups import resolve
 from .runtime import make_agent
 from .completions import context_for, generate_completion, validate_completion, while_connected
+from .suggestions import candidates_for, rank_candidates, select_ranked
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -65,14 +67,34 @@ class CompletionResponse(BaseModel):
     completion: str
 
 
+class SuggestionRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    draft: str = Field(default='', max_length=1000)
+    previous: Receipt | None = None
+
+    @field_validator('draft')
+    @classmethod
+    def single_line(cls, value):
+        if any(ord(c) < 32 for c in value):
+            raise ValueError('Enter a single-line draft')
+        return value
+
+
+class SuggestionResponse(BaseModel):
+    draft: str
+    suggestions: list[str]
+    source: Literal['jev', 'fallback']
+
+
 def create_app(*, agent_factory=make_agent, completion_fn=generate_completion,
-               access_key=None, signing_key=None):
+               ranking_fn=rank_candidates, access_key=None, signing_key=None):
     app = FastAPI(title='SWITRS hosted agent', docs_url=None, redoc_url=None, openapi_url=None)
     access_key = access_key if access_key is not None else os.getenv('SWITRS_ACCESS_KEY', '')
     signing_key = signing_key if signing_key is not None else os.getenv('SWITRS_RECEIPT_KEY', '')
     # This bounds one worker; account-level spend limits are enforced by AI Gateway.
     slots = asyncio.Semaphore(2)
     completion_slots = asyncio.Semaphore(2)
+    suggestion_slots = asyncio.Semaphore(2)
 
     def authorize(request):
         if not access_key or not signing_key:
@@ -104,7 +126,7 @@ def create_app(*, agent_factory=make_agent, completion_fn=generate_completion,
 
     @app.get('/assets/{name}')
     def asset(name: str):
-        if name not in {'app.js', 'activity.js', 'completion.js', 'style.css'}:
+        if name not in {'app.js', 'activity.js', 'completion.js', 'suggestions.js', 'style.css'}:
             raise HTTPException(404)
         return FileResponse(ROOT / 'hosted/static' / name)
 
@@ -139,6 +161,31 @@ def create_app(*, agent_factory=make_agent, completion_fn=generate_completion,
         except Exception as exc:
             logging.getLogger(__name__).warning('Autocomplete unavailable: %s', type(exc).__name__)
             return empty
+
+    @app.post('/api/suggestions', response_model=SuggestionResponse)
+    async def suggest(body: SuggestionRequest, request: Request):
+        authorize(request)
+        previous = authenticate_previous(body.previous)
+        prior_question = (previous.get('resolved_question') or previous['question']) if (
+            previous and previous.get('status') in {'answered', 'no_matching_records'}) else None
+        fallback = {'draft': body.draft, 'suggestions': [], 'source': 'fallback'}
+        candidates = candidates_for(body.draft, prior_question)
+        if not candidates or suggestion_slots.locked():
+            return fallback
+        try:
+            async with asyncio.timeout(5):
+                async with suggestion_slots:
+                    if await request.is_disconnected():
+                        return fallback
+                    result = await while_connected(request, ranking_fn(
+                        draft=body.draft, previous_question=prior_question, candidates=candidates,
+                        oidc_token=request.headers.get('x-vercel-oidc-token')))
+                    selected = select_ranked(candidates, result)
+                    return {'draft': body.draft, 'suggestions': selected,
+                            'source': 'jev' if selected else 'fallback'}
+        except Exception as exc:
+            logging.getLogger(__name__).warning('Question ranking unavailable: %s', type(exc).__name__)
+            return fallback
 
     @app.post('/api/chat')
     async def chat(body: Question, request: Request):
