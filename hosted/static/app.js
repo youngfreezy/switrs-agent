@@ -3,7 +3,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function md(src){
   const lines = esc(src).split("\n"); let html = "", i = 0;
-  const inline = t => t.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g,"$1<i>$2</i>");
+  const inline = t => t.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g,"$1<i>$2</i>").replace(/(^|\W)_([^_\n]+)_(?=\W|$)/g,"$1<i>$2</i>");
   while(i < lines.length){
     const l = lines[i];
     if(l.startsWith("```")){ let b=[]; i++; while(i<lines.length && !lines[i].startsWith("```")) b.push(lines[i++]); i++; html += `<pre>${b.join("\n")}</pre>`; continue; }
