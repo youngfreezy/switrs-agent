@@ -27,6 +27,13 @@ require clarification. “Motorcycle deaths” is not treated as either motorcyc
 killed or all people killed in motorcycle crashes. Certification binds the original
 wording and never lets the model rewrite it into a supported question.
 
+The descriptive recipes also accept bounded equivalents: “percentage” or “percent”
+for cellphone share, “crashes involved at least one drinking driver,” and “Which
+hour had the most fatal collisions?”. These forms keep the existing populations,
+known-value denominators, and unknown-value disclosures. Added county/year filters,
+causal wording, “drunk” in place of recorded drinking, or fatalities in place of
+fatal crashes do not select those recipes.
+
 ## Evidence and metric definitions
 
 Count queries use the collision table directly or filter it with `EXISTS`. Fatalities are the sum of collision-level recorded fatality counts; missing, negative, fractional, or nonfinite values prevent a complete certified total. Integer counts retain exact precision in both prose and evidence. County ranking excludes missing county labels and reports all leading ties. A party is not automatically a vehicle, and fatal crashes are not fatality totals.

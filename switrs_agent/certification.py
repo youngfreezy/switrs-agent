@@ -13,7 +13,7 @@ from datetime import date
 from decimal import Decimal
 
 from . import answerability, semantic
-from .metric_recipes import QUESTIONS, RECIPES, fatal_classification
+from .metric_recipes import RECIPES, fatal_classification, recipe_for
 from .coverage import bounds as coverage_bounds
 
 VERSION = 'certified-metrics-v2'
@@ -193,7 +193,7 @@ def period_check(toolkit, first: date, last: date) -> dict | None:
 
 def prepare(toolkit, turn_id: str) -> dict:
     question = toolkit.turns[turn_id]['question']
-    recipe = QUESTIONS.get(normalize(question))
+    recipe = recipe_for(normalize(question))
     if recipe:
         if recipe == 'covid':
             unavailable = period_check(toolkit, date(2019, 1, 1), date(2020, 12, 31))

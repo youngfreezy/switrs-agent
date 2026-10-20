@@ -253,5 +253,84 @@
       "increased",
       "April"
     ]
+  },
+  {
+    "id": "cellphone_paraphrase",
+    "question": "What percentage of at-fault drivers with known cellphone status were using a cellphone?",
+    "checks": [
+      {
+        "metric": "cellphone",
+        "sql": "SELECT 100.0 * SUM(CASE WHEN cellphone_in_use=1 THEN 1 ELSE 0 END) / SUM(CASE WHEN cellphone_in_use IN (0,1) THEN 1 ELSE 0 END) FROM parties WHERE party_type='driver' AND at_fault=1",
+        "tolerance": 1e-10
+      },
+      {
+        "metric": "unknown_cellphone_status",
+        "sql": "SELECT COUNT(*) FROM parties WHERE party_type='driver' AND at_fault=1 AND (cellphone_in_use IS NULL OR cellphone_in_use NOT IN (0,1))"
+      }
+    ],
+    "contains": [
+      "known",
+      "excluded"
+    ]
+  },
+  {
+    "id": "drinking_paraphrase",
+    "question": "How many crashes involved at least one drinking driver?",
+    "checks": [
+      {
+        "metric": "collisions_with_drinking_driver",
+        "sql": "SELECT COUNT(DISTINCT case_id) FROM parties WHERE party_type='driver' AND party_sobriety LIKE 'had been drinking%'"
+      }
+    ]
+  },
+  {
+    "id": "hour_paraphrase",
+    "question": "Which hour had the most fatal collisions?",
+    "checks": [
+      {
+        "metric": "hour_of_day",
+        "sql": "SELECT CAST(substr(collision_time,1,2) AS INTEGER) FROM collisions WHERE collision_severity='fatal' AND collision_time IS NOT NULL GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 1"
+      },
+      {
+        "metric": "fatal_collision_count",
+        "sql": "SELECT COUNT(*) FROM collisions WHERE collision_severity='fatal' AND collision_time IS NOT NULL GROUP BY substr(collision_time,1,2) ORDER BY COUNT(*) DESC LIMIT 1"
+      },
+      {
+        "metric": "unknown_fatal_classification",
+        "sql": "SELECT COUNT(*) FROM collisions WHERE collision_severity IS NULL OR collision_severity NOT IN ('fatal','severe injury','other injury','pain','property damage only') HAVING COUNT(*)>0"
+      },
+      {
+        "metric": "conflicting_fatal_classification",
+        "sql": "SELECT COUNT(*) FROM collisions WHERE collision_severity IN ('fatal','severe injury','other injury','pain','property damage only') AND killed_victims IS NOT NULL AND ((collision_severity='fatal') <> (killed_victims>0)) HAVING COUNT(*)>0"
+      }
+    ],
+    "contains": [
+      "unknown",
+      "missing"
+    ]
+  },
+  {
+    "id": "zero_control",
+    "question": "How many fatal motorcycle crashes in Alpine County in 2018?",
+    "checks": [
+      {
+        "metric": "collision_count",
+        "sql": "SELECT COUNT(*) FROM collisions WHERE county_location='alpine' AND substr(collision_date,1,4)='2018' AND collision_severity='fatal' AND motorcycle_collision=1"
+      }
+    ]
+  },
+  {
+    "id": "nevada_county_control",
+    "question": "In 2019, how many collisions were recorded in Nevada County?",
+    "checks": [
+      {
+        "metric": "collision_count",
+        "sql": "SELECT COUNT(*) FROM collisions WHERE county_location='nevada' AND substr(collision_date,1,4)='2019'"
+      }
+    ],
+    "contains": [
+      "Nevada County",
+      "2019"
+    ]
   }
 ]

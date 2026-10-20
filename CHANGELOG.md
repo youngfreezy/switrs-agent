@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Answer scoped count paraphrases, reordered county/year clauses, and calendar-year county rankings. Preserve every condition and ranking tie. Support equivalent cellphone-share, drinking-driver, and fatal-hour wording without changing metric definitions.
+- Add live Claude challenges checked against independently queried SQLite values, with source/dataset hashes, false-refusal checks, and regressions for combined filters and unverified conversation reuse.
+
 - Preserve useful coded-fatal answers when known fatal records coexist with unknown severity. State unknown counts and exclusions; do not convert an unknown population without observed fatal codes into zero. Unknown codes are not counted as known severity/fatality conflicts.
 
 - Encode the SQLite source URI so reserved filename characters cannot make reconciliation hash one source but compare another.

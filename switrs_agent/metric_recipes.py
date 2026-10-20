@@ -4,6 +4,7 @@ The question dispatcher uses full matches; extra requested filters never disappe
 These queries and renderers are trusted code, not LLM-produced SQL or conclusions.
 """
 from decimal import Decimal
+import re
 
 
 QUESTIONS = {
@@ -17,6 +18,23 @@ QUESTIONS = {
     'not used if either equipment field says so, and leave out conflicting or unknown entries': 'belts',
     'how has covid-19 changed collisions, if at all': 'covid',
 }
+
+
+# Whole-question equivalents only: no added populations, dates, or causal claims.
+RECIPE_PARAPHRASES = (
+    (r'what (?:share|percentage|percent) of at[- ]fault drivers(?: with known cellphone status)? '
+     r'(?:were using|used) a (?:cellphone|cell phone)', 'cellphone'),
+    (r'how many (?:collisions|crashes) involved at least one '
+     r'(?:driver who had been drinking|drinking driver)', 'drinking'),
+    (r'(?:which|what) hour (?:had|has) the most fatal (?:collisions|crashes)', 'fatal_hour'),
+)
+
+
+def recipe_for(question: str) -> str | None:
+    if exact := QUESTIONS.get(question):
+        return exact
+    return next((recipe for pattern, recipe in RECIPE_PARAPHRASES
+                 if re.fullmatch(pattern, question)), None)
 
 
 def share(b, template, metric, q, numerator, denominator, decimals=2):

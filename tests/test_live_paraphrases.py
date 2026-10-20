@@ -80,3 +80,11 @@ def test_combined_filters_with_a_distinct_decoy_for_each_predicate(rich_kit, que
     assert [c['computed'] for c in p['claims'] if c['metric'] == 'collision_count'] == [1]
     for scope in ('Los Angeles County', '2019', 'motorcycle', 'coded as fatal'):
         assert scope in p['answer']
+
+
+def test_nevada_county_is_a_california_county(rich_kit):
+    rich_kit.db.connection.execute("UPDATE collisions SET county_location='nevada' WHERE case_id='A'")
+    _, p, _ = publish(rich_kit, 'In 2019, how many collisions were recorded in Nevada County?')
+    assert p['status'] == 'answered'
+    assert [c['computed'] for c in p['claims']] == [1]
+    assert 'Nevada County' in p['answer']
