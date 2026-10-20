@@ -50,7 +50,7 @@ function renderHistory() {
     const button = document.createElement('button'); button.type = 'button'; button.textContent = record.question;
     button.onclick = async () => {
       if (busy) return;
-      resetResult(record.question); $('#progress').textContent = 'Authenticating the saved answer…';
+      resetResult(record.question); $('#question').value = record.question; $('#progress').textContent = 'Authenticating the saved answer…';
       setBusy(true); $('#stop').hidden = true; $('#evidence').hidden = true;
       try {
         const response = await fetch('/api/verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(record.receipt), signal:AbortSignal.timeout(15000)});
