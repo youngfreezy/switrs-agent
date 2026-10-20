@@ -62,13 +62,17 @@ def change(b, q, newer, older, label):
 
 
 def parked(b):
-    q = b.query("""SELECT COUNT(*) AS total,
-      COUNT(*) FILTER (WHERE motor_vehicle_involved_with='parked motor vehicle') AS primary_n,
-      COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM parties p WHERE p.case_id=c.case_id
-        AND p.party_type='parked vehicle')) AS party_n,
-      COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM parties p WHERE p.case_id=c.case_id
-        AND p.movement_preceding_collision='parked')) AS movement_n
-      FROM collisions c""", 'parked_collision_shares')
+    # Uncorrelated membership filters let DuckDB hash only eligible party IDs.
+    # Correlated EXISTS inside aggregate FILTER instead builds two large mark joins.
+    q = b.query("""SELECT
+      (SELECT COUNT(*) FROM collisions) AS total,
+      (SELECT COUNT(*) FROM collisions
+        WHERE motor_vehicle_involved_with='parked motor vehicle') AS primary_n,
+      (SELECT COUNT(*) FROM collisions WHERE case_id IN (SELECT case_id FROM parties
+        WHERE party_type='parked vehicle')) AS party_n,
+      (SELECT COUNT(*) FROM collisions WHERE case_id IN (SELECT case_id FROM parties
+        WHERE movement_preceding_collision='parked')) AS movement_n
+      """, 'parked_collision_shares')
     for column, definition in (
         ('primary_n', 'coded as primarily involving a parked motor vehicle'),
         ('party_n', 'with a party recorded as a parked vehicle'),

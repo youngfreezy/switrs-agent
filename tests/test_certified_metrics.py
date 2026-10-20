@@ -73,6 +73,18 @@ def test_no_denominator_is_not_zero_percent(rich_kit):
     assert 'unavailable' in p['answer'].lower()
 
 
+def test_parked_membership_counts_collisions_once_and_ignores_orphans(rich_kit):
+    rich_kit.db.connection.execute("""
+      INSERT INTO parties (case_id, party_number, party_type, movement_preceding_collision)
+      VALUES ('A', 9, 'parked vehicle', NULL), ('A', 10, 'parked vehicle', 'parked'),
+             ('B', 9, NULL, 'parked'), ('orphan', 1, 'parked vehicle', 'parked'),
+             (NULL, 1, 'parked vehicle', 'parked');
+    """)
+    _, p, result = publish(rich_kit, 'What percentage of collisions involved a parked vehicle?')
+    assert [c['computed'] for c in p['claims']] == pytest.approx([100/3, 100/3, 200/3])
+    assert result['certified']
+
+
 def test_equipment_conflicts_are_excluded_and_second_field_is_used(rich_kit):
     rich_kit.db.connection.execute("""
       UPDATE victims SET victim_safety_equipment_2=victim_safety_equipment_1,

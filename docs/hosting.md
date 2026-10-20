@@ -24,6 +24,8 @@ The uploaded archive is 579 MB. Building and deploying consumes Blob storage/tra
 
 DuckDB spills large query intermediates into a private system temporary directory, not beside the read-only deployed database. Connections to the same database share that directory for the process lifetime. Temporary storage does not enable database writes or external-file access; memory and temporary-disk caps still apply. The spill regression test forces an external sort with a blocked adjacent directory and confirms that the source database remains unchanged. See [DuckDB temporary-directory configuration](https://duckdb.org/docs/lts/configuration/pragmas#temp-directory-for-spilling-data-to-disk).
 
+The Vercel entry point currently caps DuckDB at 1 GB of memory, two threads, and zero disk spill. The parked-vehicle recipe uses membership filters over eligible party IDs so it fits those limits. A separate-process snapshot regression checks all three percentages and certification under that exact budget; ordinary tests with the local 4 GB default do not establish hosted query viability.
+
 ## Configuration
 
 | Variable | Purpose |
