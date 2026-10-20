@@ -194,3 +194,11 @@ def test_source_uri_cannot_substitute_a_different_file(snapshot, monkeypatch, mu
             db.execute('UPDATE collisions SET killed_victims=0')
     result = reconcile_pair(monkeypatch, named_source, target, meta)
     assert result['status'] == expected
+
+
+def test_verified_snapshot_can_move_between_build_and_runtime(snapshot, monkeypatch):
+    source, target, meta = snapshot('deployed')
+    expected = reconcile_pair(monkeypatch, source, target, meta)
+    st = target.stat()
+    os.utime(target, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000_000))
+    assert tools.load_dataset_meta(target) == expected

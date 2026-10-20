@@ -76,10 +76,12 @@ class ApiAgent:
 
     name = "api"
 
-    def __init__(self, session_id: str, model: str = MODEL, max_turns: int = 30):
+    def __init__(self, session_id: str, model: str = MODEL, max_turns: int = 30,
+                 *, client=None, max_tokens: int = 16000):
         import anthropic
 
-        self.client = anthropic.AsyncAnthropic()
+        self.client = client if client is not None else anthropic.AsyncAnthropic()
+        self.max_tokens = max_tokens
         self.session_id, self.model, self.max_turns = session_id, model, max_turns
         self.messages: list = []
         self._stack: AsyncExitStack | None = None
@@ -108,7 +110,7 @@ class ApiAgent:
             try:
                 resp = await self.client.messages.create(
                     model=self.model,
-                    max_tokens=16000,
+                    max_tokens=self.max_tokens,
                     system=self.system,
                     tools=self.tools,
                     messages=self.messages,
@@ -148,9 +150,13 @@ class ApiAgent:
         yield self._done(self.max_turns, f"stopped after {self.max_turns} model turns")
 
     async def close(self) -> None:
-        if self._stack:
-            await self._stack.aclose()
-        await self.client.close()
+        try:
+            if self._stack:
+                await self._stack.aclose()
+        finally:
+            if hasattr(self, "toolkit"):
+                self.toolkit.db.con.close()
+            await self.client.close()
 
 
 # ---- backend: Claude Agent SDK, Claude Code login --------------------------------------------

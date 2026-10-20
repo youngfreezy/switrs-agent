@@ -7,3 +7,5 @@ sessions.db
 outputs/
 .pytest_cache/
 .DS_Store
+.vercel
+.env*

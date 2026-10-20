@@ -23,8 +23,9 @@ from .coverage import statement as coverage_statement
 from .request_binding import new_request, read_request, same_question
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-OUTPUT_DIR = ROOT / "outputs" / "answers"
-TRACE_DIR = ROOT / "outputs" / "traces"
+OUTPUT_ROOT = pathlib.Path(os.environ.get("SWITRS_OUTPUT_DIR", ROOT / "outputs"))
+OUTPUT_DIR = OUTPUT_ROOT / "answers"
+TRACE_DIR = OUTPUT_ROOT / "traces"
 QUESTION_CUES = re.compile(r"\b(bias|cause|caused|because|effect|effective|work|works|prove|disprove|chang\w*|compare|versus|vs)\b", re.I)
 YEAR_IN_SQL = re.compile(r"(?<![\d.])(20[0-2]\d)(?![\d])")
 DATASET_META = ROOT / "data" / "dataset_meta.json"
@@ -46,7 +47,8 @@ def load_dataset_meta(db_path: str | os.PathLike | None = None) -> dict:
     db_path = pathlib.Path(db_path or os.environ.get("SWITRS_DB", ROOT / "data" / "switrs.duckdb"))
     recorded = meta.get("duckdb_file") or {}
     st = db_path.stat()
-    if recorded.get("bytes") != st.st_size or recorded.get("mtime_ns") != st.st_mtime_ns:
+    # Packaging changes filesystem timestamps. The full content digest below is authoritative.
+    if recorded.get("bytes") != st.st_size:
         raise RuntimeError(f"{db_path} changed after reconciliation. Run scripts/reconcile.py again.")
     if not recorded.get("sha256") or recorded["sha256"] != sha256(db_path):
         raise RuntimeError(f"{db_path} content digest is missing or changed. Run scripts/reconcile.py again.")
