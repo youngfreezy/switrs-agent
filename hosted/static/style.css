@@ -56,11 +56,11 @@ summary { cursor: pointer; padding: 13px 0; min-height: 48px; font-size: 14px; }
 summary .muted { margin-left: 12px; }
 .access-body { display: grid; grid-template-columns: minmax(160px, 1fr) 1fr; align-items: center; gap: 20px; padding-top: 4px; }
 label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
-input { width: 100%; padding: 10px 12px; min-height: 44px; border: 1px solid #909687; border-radius: 0; background: var(--white); color: var(--ink); }
+input { width: 100%; padding: 10px 12px; min-height: 44px; border: 1px solid #747a6e; border-radius: 0; background: var(--white); color: var(--ink); }
 #service-status { padding: 12px 0 16px; }
-#question-form { border: 1px solid #909687; background: var(--white); padding: 18px; }
+#question-form { border: 1px solid #747a6e; background: var(--white); padding: 18px; }
 textarea { display: block; resize: vertical; width: 100%; min-height: 108px; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); line-height: 1.6; }
-textarea::placeholder { color: #747a6e; }
+textarea::placeholder { color: var(--muted); }
 textarea:focus-visible { outline-offset: 3px; }
 .composer-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; }
 .composer-footer .muted { font-size: 11px; }
