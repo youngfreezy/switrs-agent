@@ -11,23 +11,12 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from switrs_agent.publication import latest_certificate
+from switrs_agent.publication import latest_certified_result
 from . import receipts
+from .followups import resolve
 from .runtime import make_agent
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-class Question(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    message: str = Field(min_length=1, max_length=4000)
-
-    @field_validator('message')
-    @classmethod
-    def nonempty(cls, value):
-        if not value.strip():
-            raise ValueError('Enter a question')
-        return value.strip()
 
 
 class Receipt(BaseModel):
@@ -36,6 +25,21 @@ class Receipt(BaseModel):
     question: str = Field(max_length=4000)
     answer: str = Field(max_length=100000)
     signature: str = Field(max_length=64)
+    resolved_question: str | None = Field(default=None, max_length=4000)
+    status: str | None = Field(default=None, max_length=40)
+
+
+class Question(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    message: str = Field(min_length=1, max_length=4000)
+    previous: Receipt | None = None
+
+    @field_validator('message')
+    @classmethod
+    def nonempty(cls, value):
+        if not value.strip():
+            raise ValueError('Enter a question')
+        return value.strip()
 
 
 def sse(event):
@@ -78,7 +82,7 @@ def create_app(*, agent_factory=make_agent, access_key=None, signing_key=None):
 
     @app.post('/api/verify')
     def verify(record: Receipt):
-        return {'valid': receipts.verify(record.model_dump(), signing_key)}
+        return {'valid': receipts.verify(record.model_dump(exclude_none=True), signing_key)}
 
     @app.post('/api/chat')
     async def chat(body: Question, request: Request):
@@ -87,6 +91,12 @@ def create_app(*, agent_factory=make_agent, access_key=None, signing_key=None):
         supplied = request.headers.get('authorization', '')
         if not secrets.compare_digest(supplied.encode(), ('Bearer ' + access_key).encode()):
             raise HTTPException(401, 'Enter the access code to ask a question.')
+        question = body.message
+        if body.previous is not None:
+            previous = body.previous.model_dump(exclude_none=True)
+            if not receipts.verify(previous, signing_key):
+                raise HTTPException(422, 'The prior answer could not be authenticated. Ask a complete question.')
+            question = resolve(question, previous.get('resolved_question') or previous['question'])
 
         async def stream():
             events = []
@@ -96,7 +106,7 @@ def create_app(*, agent_factory=make_agent, access_key=None, signing_key=None):
                     async with slots:
                         yield sse({'kind': 'status', 'text': 'Checking the dataset and investigating your question…'})
                         agent = agent_factory(oidc_token=request.headers.get('x-vercel-oidc-token'))
-                        async for event in agent.ask(body.message):
+                        async for event in agent.ask(question):
                             if await request.is_disconnected():
                                 return
                             # Provider errors can contain credentials, request contents or internal URLs.
@@ -120,10 +130,15 @@ def create_app(*, agent_factory=make_agent, access_key=None, signing_key=None):
                     toolkit = getattr(agent, 'toolkit', None)
                     if toolkit is not None:
                         toolkit.trace_path.unlink(missing_ok=True)
-            answer = latest_certificate(events, body.message)
-            yield sse({'kind': 'certified', 'final_answer': answer,
-                       'receipt': receipts.sign(body.message, answer, signing_key)}
-                      if answer else {'kind': 'uncertified'})
+            result = latest_certified_result(events, question)
+            if result:
+                answer, status = result['final_answer'], result.get('status', 'unknown')
+                yield sse({'kind': 'certified', 'final_answer': answer, 'status': status,
+                           'resolved_question': question,
+                           'receipt': receipts.sign(body.message, answer, signing_key,
+                                                    resolved_question=question, status=status)})
+            else:
+                yield sse({'kind': 'uncertified'})
 
         return StreamingResponse(stream(), media_type='text/event-stream',
                                  headers={'X-Accel-Buffering': 'no'})

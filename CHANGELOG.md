@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Resolve explicit year/county follow-ups from authenticated prior question scopes, preserving all other filters and displaying the resolved question. Distinguish checked limitations from numerical answers in the hosted UI.
+- Reject malformed Unicode receipt signatures normally instead of returning HTTP 500.
+
 - Accept additional whole-question paraphrases for reported traffic accidents, fatal motorcycle counts, calendar years, known-status cellphone shares, and leading fatal-crash hours. Preserve all filters and reject nearby population changes.
 
 - Add a separate Vercel app with a Grasp-inspired interface, Claude via AI Gateway, and the full verified dataset packaged with the function.

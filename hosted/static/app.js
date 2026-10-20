@@ -24,7 +24,7 @@ function md(src){
 }
 
 const storageKey = 'switrs-questions-v1';
-let busy = false, controller = null, history = [];
+let busy = false, controller = null, history = [], previousReceipt = null;
 try { const saved = JSON.parse(localStorage.getItem(storageKey) || '[]'); if (Array.isArray(saved)) history = saved.slice(0, 50); } catch {}
 function setBusy(value) {
   busy = value; $('#send').disabled = value; $('#new').disabled = value; $('#clear').disabled = value;
@@ -33,11 +33,27 @@ function setBusy(value) {
 function resetResult(question) {
   $('#examples').hidden = true; $('#result').hidden = false;
   $('#result-question').textContent = question; $('#verdict').replaceChildren();
+  $('#resolved-question').textContent = '';
   $('#answer').replaceChildren(); $('#trace').replaceChildren(); $('#evidence').open = false; $('#evidence').hidden = false;
 }
 function verdict(text, failure = false) {
   const node = document.createElement('p'); node.className = 'badge' + (failure ? ' failure' : '');
   node.textContent = text; $('#verdict').replaceChildren(node);
+}
+function setContext(receipt) {
+  previousReceipt = receipt;
+  $('#followup-context').textContent = receipt
+    ? 'Follow-ups refer to: ' + (receipt.resolved_question || receipt.question)
+    : 'Ask a complete question. After an answer, you can change its year or county.';
+}
+function showResolution(question, receipt) {
+  $('#resolved-question').textContent = receipt.resolved_question && receipt.resolved_question !== question
+    ? 'Resolved question: ' + receipt.resolved_question : '';
+}
+function checkedLabel(status) {
+  return ['answered', 'no_matching_records'].includes(status)
+    ? 'Checked answer · metric, scope & source verified'
+    : 'Checked limitation · no complete answer certified';
 }
 function saveHistory() {
   try { localStorage.setItem(storageKey, JSON.stringify(history.slice(0, 50))); } catch { $('#progress').textContent = 'This browser could not save your history. The answer is still available below.'; }
@@ -46,18 +62,20 @@ function saveHistory() {
 function renderHistory() {
   $('#history').replaceChildren();
   history.forEach(record => {
-    if (typeof record.question !== 'string') return;
+    if (!record || typeof record.question !== 'string') return;
     const button = document.createElement('button'); button.type = 'button'; button.textContent = record.question;
     button.onclick = async () => {
       if (busy) return;
-      resetResult(record.question); $('#question').value = record.question; $('#progress').textContent = 'Authenticating the saved answer…';
+      setContext(null); resetResult(record.question); $('#question').value = record.question; $('#progress').textContent = 'Authenticating the saved answer…';
       setBusy(true); $('#stop').hidden = true; $('#evidence').hidden = true;
       try {
         const response = await fetch('/api/verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(record.receipt), signal:AbortSignal.timeout(15000)});
         const checked = response.ok && (await response.json()).valid === true;
         if (!checked || record.receipt.question !== record.question) throw new Error('Saved answer could not be authenticated. Ask the question again.');
         $('#answer').innerHTML = md(record.receipt.answer);
-        verdict('Authenticated saved answer · checked when originally produced');
+        showResolution(record.question, record.receipt);
+        verdict(record.receipt.status ? 'Saved · ' + checkedLabel(record.receipt.status) : 'Authenticated saved answer · checked when originally produced');
+        setContext(record.receipt);
         $('#progress').textContent = 'Saved answer. Run the question again for a new investigation.';
       } catch (error) { verdict('Saved answer is unverified', true); $('#progress').textContent = error.message; }
       finally { setBusy(false); }
@@ -88,12 +106,13 @@ async function ask(question) {
     $('#access').open = true; $('#access-code').focus();
     $('#progress').textContent = 'Enter the private access code under Agent access, then ask again.'; return;
   }
-  setBusy(true); resetResult(question); $('#progress').textContent = 'Connecting to the agent…';
+  const previous = previousReceipt;
+  setContext(null); setBusy(true); resetResult(question); $('#progress').textContent = 'Connecting to the agent…';
   controller = new AbortController(); let finalEvent = null; const cards = new Map();
   try {
     const response = await fetch('/api/chat', {method:'POST', signal:controller.signal,
       headers:{'Content-Type':'application/json', Authorization:'Bearer ' + $('#access-code').value.trim()},
-      body:JSON.stringify({message:question})});
+      body:JSON.stringify({message:question, ...(previous ? {previous} : {})})});
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
       throw new Error(typeof detail.detail === 'string' ? detail.detail : 'The request could not start. Please try again.');
@@ -114,7 +133,9 @@ async function ask(question) {
     // Only publish after the response ends cleanly and the server supplies its verdict.
     if (finalEvent?.kind !== 'certified' || !finalEvent.receipt) throw new Error('No answer passed verification in this turn. The investigation notes remain unverified.');
     $('#answer').innerHTML = md(finalEvent.final_answer);
-    verdict('Checked answer · metric, scope & source verified');
+    showResolution(question, finalEvent.receipt);
+    verdict(checkedLabel(finalEvent.status));
+    setContext(finalEvent.receipt);
     $('#progress').textContent = 'Investigation complete. Read the answer and its limitations below.';
     history.unshift({question, receipt:finalEvent.receipt}); history = history.slice(0, 50); saveHistory();
   } catch (error) {
@@ -125,7 +146,7 @@ async function ask(question) {
 $('#question-form').onsubmit = event => { event.preventDefault(); const question = $('#question').value.trim(); if (question) ask(question); };
 $('#question').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); $('#question-form').requestSubmit(); } });
 $('#stop').onclick = () => controller?.abort();
-$('#new').onclick = () => { if (busy) return; $('#result').hidden = true; $('#examples').hidden = false; $('#question').value = ''; $('#progress').textContent = ''; $('#question').focus(); };
+$('#new').onclick = () => { if (busy) return; setContext(null); $('#result').hidden = true; $('#examples').hidden = false; $('#question').value = ''; $('#progress').textContent = ''; $('#question').focus(); };
 $('#clear').onclick = () => { if (!busy) { history = []; saveHistory(); } };
 document.querySelectorAll('.example-grid button').forEach(button => { button.onclick = () => { if (!busy) { $('#question').value = button.textContent; ask(button.textContent); } }; });
 renderHistory();

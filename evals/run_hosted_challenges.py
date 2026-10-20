@@ -38,6 +38,7 @@ def main():
     ap.add_argument('--source', required=True, type=Path)
     ap.add_argument('--only')
     ap.add_argument('--cases', type=Path, default=ROOT / 'evals/live_challenges.json')
+    ap.add_argument('--deployment-commit', help='Commit independently confirmed as the ready production deployment')
     ap.add_argument('--output', type=Path, default=ROOT / 'outputs/hosted-challenges.json')
     args = ap.parse_args()
     cases = json.loads(args.cases.read_text())
@@ -51,25 +52,46 @@ def main():
         digest = hashlib.file_digest(source, 'sha256').hexdigest()
     if digest != manifest['source']['sha256']:
         ap.error('SQLite does not match the reconciled snapshot')
-    report = {'url': args.url, 'source_sha256': digest, 'results': []}
+    report = {'url': args.url, 'source_sha256': digest, 'deployment_commit': args.deployment_commit,
+              'results': []}
+    receipts_by_case, oracle_cache = {}, {}
     with sqlite3.connect(args.source.resolve().as_uri() + '?mode=ro&immutable=1', uri=True) as con, httpx.Client(timeout=300) as client:
         for case in cases:
             print(case['id'], flush=True)
-            expected = [[r[0] for r in con.execute(check['sql']).fetchall()] for check in case.get('checks', [])]
+            expected = []
+            for check in case.get('checks', []):
+                if check['sql'] not in oracle_cache:
+                    oracle_cache[check['sql']] = [r[0] for r in con.execute(check['sql']).fetchall()]
+                expected.append(oracle_cache[check['sql']])
             start = time.monotonic()
-            response = client.post(args.url.rstrip('/') + '/api/chat', json={'message': case['question']},
+            payload = {'message': case['question']}
+            if case.get('after'):
+                payload['previous'] = {**receipts_by_case[case['after']], **case.get('tamper', {})}
+            response = client.post(args.url.rstrip('/') + '/api/chat', json=payload,
                                    headers={'Authorization': 'Bearer ' + os.environ['SWITRS_ACCESS_KEY']})
+            if case.get('http_status'):
+                report['results'].append({'id': case['id'], 'question': case['question'],
+                                          'pass': response.status_code == case['http_status'],
+                                          'http_status': response.status_code, 'events': []})
+                args.output.write_text(json.dumps(report, indent=2))
+                print('PASS' if report['results'][-1]['pass'] else 'FAIL', flush=True)
+                continue
             response.raise_for_status()
             events = [json.loads(chunk[6:]) for chunk in response.text.split('\n\n') if chunk.startswith('data: ')]
             final = events[-1] if events else {}
             submission = submission_from(events)
-            answer = latest_certificate(events, case['question'])
+            resolved = case.get('resolved_question', case['question'])
+            answer = latest_certificate(events, resolved)
             passed = (final.get('kind') == 'certified' and final.get('final_answer') == answer
                       and bool(answer) and judge(case, submission, expected)
                       and submission['result'].get('analytical_sha256') == manifest['duckdb_file']['sha256'])
             if passed:
                 receipt = final['receipt']
-                passed = (client.post(args.url.rstrip('/') + '/api/verify', json=receipt).json().get('valid') is True)
+                passed = (receipt.get('question') == case['question']
+                          and receipt.get('resolved_question', case['question']) == resolved
+                          and client.post(args.url.rstrip('/') + '/api/verify', json=receipt).json().get('valid') is True)
+            if final.get('receipt'):
+                receipts_by_case[case['id']] = final['receipt']
             report['results'].append({'id': case['id'], 'question': case['question'], 'expected': expected,
                                       'pass': bool(passed), 'seconds': round(time.monotonic()-start, 2), 'events': events})
             args.output.parent.mkdir(parents=True, exist_ok=True)
