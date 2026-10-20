@@ -153,3 +153,47 @@ pre { overflow-x: auto; padding: 14px; background: #eceae4; font: 12px/1.6 monos
   .guide h2 { font-size: 25px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+
+/* The submitted question replaces the composer while the stream is active. */
+#activity { margin-top: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--white); box-shadow: 0 6px 28px rgb(18 32 58 / .04); overflow: hidden; }
+.pending-head { display: flex; align-items: start; justify-content: space-between; gap: 20px; padding: 20px 24px; background: #fafaf7; border-bottom: 1px solid var(--line); }
+.pending-head .label { color: var(--muted); font-size: 10px; margin-bottom: 8px; }
+#pending-question { font-size: 16px; line-height: 1.5; margin: 0; overflow-wrap: anywhere; }
+#stop { display: inline-flex; align-items: center; gap: 12px; flex-shrink: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--white); color: var(--muted); font-size: 12px; }
+#stop:hover { color: var(--ink); border-color: var(--ink); }
+#stop span { font-size: 20px; line-height: 1; }
+.activity-body { padding: 24px; }
+.activity-heading { display: flex; align-items: center; gap: 12px; }
+#activity-title { font: 500 17px/1.4 Arial, sans-serif; letter-spacing: -.02em; }
+#activity-title:focus:not(:focus-visible) { outline: none; }
+.live-label { margin-left: auto; color: var(--accent); font: 11px/1.5 ui-monospace, monospace; border: 1px solid #c3dacb; background: #f1f7f3; border-radius: 20px; padding: 2px 8px; }
+.thinking-loader { display: inline-flex; align-items: center; justify-content: center; gap: 3px; flex-shrink: 0; width: 36px; height: 36px; background: #e3f0e8; border-radius: 10px; }
+.thinking-loader i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: thinking 1.4s ease-in-out infinite; }
+.thinking-loader i:nth-child(2) { animation-delay: .16s; }
+.thinking-loader i:nth-child(3) { animation-delay: .32s; }
+@keyframes thinking { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-3px); opacity: 1; } }
+#activity-stages { display: flex; gap: 8px; list-style: none; padding: 0; margin: 20px 0; }
+#activity-stages li { padding: 5px 12px; border-radius: 5px; background: #f6f5f1; color: var(--muted); font-size: 11px; }
+#activity-stages [aria-current="step"] { color: #17543a; background: #e3f0e8; box-shadow: inset 0 -2px #1f6b45; }
+#activity-log { list-style: none; padding: 0; margin: 20px 0; min-height: 64px; }
+#activity-log li { display: flex; align-items: baseline; gap: 10px; color: var(--muted); font-size: 12px; line-height: 1.6; padding: 3px 0; overflow-wrap: anywhere; }
+#activity-log li::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #787c87; flex-shrink: 0; }
+#activity-log li:last-child { color: var(--ink); }
+#activity-log li:last-child::before { background: var(--accent); }
+.answer-skeleton { display: grid; gap: 8px; margin-top: 20px; }
+.answer-skeleton span { display: block; height: 6px; border-radius: 3px; background: #eceee9; width: 82%; animation: skeleton-breathe 2s ease-in-out infinite; }
+.answer-skeleton span:last-child { width: 56%; animation-delay: .2s; }
+@keyframes skeleton-breathe { 50% { opacity: .45; } }
+.activity-note { margin-top: 16px; color: var(--muted); font-size: 11px; }
+#result:not([hidden]) { margin: 0 0 24px; padding-top: 0; border-top: 0; }
+#result:focus { outline: none; }
+#result:focus-visible { outline: 2px solid var(--accent); outline-offset: 8px; }
+@media (max-width: 440px) {
+  .pending-head, .activity-body { padding: 16px; }
+  .pending-head { gap: 12px; }
+  #pending-question { font-size: 14px; }
+  .activity-heading { gap: 8px; flex-wrap: wrap; }
+  #activity-title { font-size: 15px; flex: 1; min-width: 130px; }
+  #activity-stages { gap: 6px; }
+  #activity-stages li { padding-inline: 10px; }
+}

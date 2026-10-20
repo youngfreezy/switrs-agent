@@ -97,3 +97,11 @@ def test_runtime_identity_is_passed_per_request_not_shared_in_environment():
             'Authorization':'Bearer test-access', 'x-vercel-oidc-token':token})
         assert token not in response.text
     assert seen == ['request-one', 'request-two']
+
+
+def test_loading_script_is_served_under_the_existing_security_policy():
+    response = client().get('/assets/activity.js')
+    assert response.status_code == 200
+    assert 'function createActivity' in response.text
+    assert "script-src 'self'" in response.headers['content-security-policy']
+    assert client().get('/assets/unknown.js').status_code == 404

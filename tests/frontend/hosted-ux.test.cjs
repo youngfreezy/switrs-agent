@@ -3,20 +3,21 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
-function setup() {
-  const nodes = new Map();
-  function element() { return {value:'', textContent:'', innerHTML:'', hidden:false, disabled:false, children:[], listeners:{}, selectionStart:0, selectionEnd:0,
+function setup({chat} = {}) {
+  const nodes = new Map(); let focused = null;
+  function element() { return {value:'', textContent:'', innerHTML:'', get hidden(){return this._hidden??false}, set hidden(value){this._hidden=value;if(value && focused===this)focused=null}, disabled:false, children:[], listeners:{}, selectionStart:0, selectionEnd:0,
     setSelectionRange(start,end){this.selectionStart=start;this.selectionEnd=end},
     classList:{toggle(){}}, setAttribute(k,v){this[k]=v}, removeAttribute(k){delete this[k]}, addEventListener(type,fn){(this.listeners[type]??=[]).push(fn)},
     append(...children){this.children.push(...children)}, replaceChildren(...children){this.children=children},
-    focus(){this.focused=true}, scrollIntoView(){} }; }
+    focus(){this.focused=true;focused=this}, scrollIntoView(){} }; }
   const get = selector => { if(!nodes.has(selector))nodes.set(selector,element());return nodes.get(selector); };
   const example = element();example.textContent = 'How many collisions in Orange County in 2019?';
   const calls=[];
-  const context = vm.createContext({document:{querySelector:get,querySelectorAll:()=>[example],createElement:element},
+  const context = vm.createContext({document:{get activeElement(){return focused},querySelector:get,querySelectorAll:()=>[example],createElement:element},
     localStorage:{getItem:()=>null,setItem(){}},AbortController,AbortSignal,TextDecoder,
     fetch:async (url,options)=>{calls.push({url,options});return url==='/api/status'
-      ? {json:async()=>({ready:true})} : {ok:false,status:401,json:async()=>({detail:'Enter the access code to ask a question.'})};}});
+      ? {json:async()=>({ready:true})} : chat ? chat(options) : {ok:false,status:401,json:async()=>({detail:'Enter the access code to ask a question.'})};}});
+  if(fs.existsSync('hosted/static/activity.js'))vm.runInContext(fs.readFileSync('hosted/static/activity.js','utf8'),context);
   vm.runInContext(fs.readFileSync('hosted/static/app.js','utf8'),context);
   return {get,example,calls,run:code=>vm.runInContext(code,context)};
 }
@@ -95,4 +96,53 @@ test('follow-up completion requires an active checked answer and never reuses st
   ui.run("setContext({status:'answered',question:'How many collisions in 2019?'})");
   typeQuestion(ui,'And in');assert.equal(key(ui,'Tab').prevented,true);assert.equal(ui.get('#question').value,'And in 2020?');
   ui.run("setContext({status:'unsupported'})");typeQuestion(ui,'And in');assert.equal(key(ui,'Tab').prevented,false);
+});
+
+test('loading replaces the composer with the submitted question and one cancel control',()=>{
+  const ui=setup();ui.get('#question').value='How many collisions?';
+  ui.run("resetResult('How many collisions?');setBusy(true)");
+  assert.equal(ui.get('#question-form').hidden,true);
+  assert.equal(ui.get('#activity').hidden,false);
+  assert.equal(ui.get('#pending-question').textContent,'How many collisions?');
+  assert.equal(ui.get('#result').hidden,true);
+  assert.equal(ui.get('#progress').hidden,true);
+  assert.equal(ui.get('#stop').hidden,false);
+  ui.run('setBusy(false)');
+  assert.equal(ui.get('#activity').hidden,true);
+  assert.equal(ui.get('#question-form').hidden,false);
+});
+test('streamed tool events update progress without exposing model prose as an answer',()=>{
+  const ui=setup();ui.run("setBusy(true);showEvent({kind:'tool_call',tool:'run_sql',id:'q',input:{}},new Map())");
+  assert.equal(ui.get('#activity-title').textContent,'Querying the records');
+  assert.match(ui.get('#activity-log').children.at(-1).textContent,/read-only query/);
+  ui.run("showEvent({kind:'text',text:'Unverified: 999 crashes'},new Map())");
+  assert.equal(ui.get('#answer').innerHTML,'');
+  assert.equal(ui.get('#activity-log').children.some(x=>x.textContent.includes('999')),false);
+  ui.run("showEvent({kind:'tool_call',tool:'submit_answer',id:'s',input:{}},new Map())");
+  assert.equal(ui.get('#activity-title').textContent,'Checking the answer');
+});
+test('a certificate stays hidden until the stream closes, then loading ends',async()=>{
+  let stream;const ui=setup({chat:async()=>({ok:true,body:new ReadableStream({start(c){stream=c}})})});
+  ui.get('#access-code').value='demo';ui.get('#question').value='Question';
+  const pending=ui.run("ask('Question')");await new Promise(resolve=>setImmediate(resolve));
+  stream.enqueue(new TextEncoder().encode('data: '+JSON.stringify({kind:'certified',status:'answered',final_answer:'Checked: 42.',receipt:{status:'answered',question:'Question',answer:'Checked: 42.'}})+'\n\n'));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(ui.get('#answer').innerHTML,'');assert.equal(ui.get('#activity').hidden,false);
+  stream.close();await pending;
+  assert.match(ui.get('#answer').innerHTML,/42/);
+  assert.equal(ui.get('#activity').hidden,true);assert.equal(ui.get('#result').hidden,false);
+});
+test('cancelling restores the editable question and never publishes a result',async()=>{
+  const ui=setup({chat:({signal})=>new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(Object.assign(new Error('Stopped'),{name:'AbortError'}))))});
+  ui.get('#access-code').value='demo';ui.get('#question').value='Keep my question';
+  const pending=ui.run("ask('Keep my question')");ui.get('#stop').onclick();await pending;
+  assert.equal(ui.get('#activity').hidden,true);assert.equal(ui.get('#question-form').hidden,false);
+  assert.equal(ui.get('#question').value,'Keep my question');assert.equal(ui.get('#answer').innerHTML,'');
+  assert.match(ui.get('#progress').textContent,/Stopped/);
+});
+
+test('focus leaves the disappearing Stop button for the result',()=>{
+  const ui=setup();ui.run("resetResult('Question');setBusy(true)");ui.get('#stop').focus();
+  ui.run("verdict('No checked answer',true);setBusy(false)");
+  assert.equal(ui.run('document.activeElement'),ui.get('#result'));
 });

@@ -8,6 +8,12 @@ The textarea offers matching starter questions and, after an authenticated answe
 
 The presentation preserves the complete server-certified answer, scope, caveats, evidence and receipt verification. Raw model notes and tool results remain behind an explicitly unverified investigation disclosure. No numerical answer is derived or rewritten in the browser.
 
+## Streaming and loading states
+
+During a request, replace the composer with a compact submitted-question card, animated thinking dots, one Stop control and a live progress feed. The Understand / Query / Verify highlight follows actual tool calls; it does not imply a percentage or a completed stage. Display only known, plain-language descriptions of tool activity, never model prose as a pending answer. Show at most three recent updates and respect reduced-motion preferences.
+
+On clean completion, place the checked result above the restored composer. Cancellation and errors restore the editable question and clear the loader; the app never publishes a partial certificate. A saved-result load uses the same card with an authentication message and no Stop control. Focus moves from the disappearing composer to the activity heading, then to the result unless the user moved elsewhere. Keep the V2 palette and preserve keyboard autocomplete.
+
 ## Verification
 
 Run the behavior regressions with `node --test tests/frontend/hosted-ux.test.cjs`, check syntax with `node --check hosted/static/app.js`, and run the service regressions with `uv run pytest -q`.

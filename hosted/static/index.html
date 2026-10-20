@@ -5,7 +5,7 @@
   <meta name="theme-color" content="#f6f5f1">
   <meta name="description" content="Explore California collision records with answers checked against the dataset, explicit limits, and inspectable evidence.">
   <title>SWITRS · Ask the records</title>
-  <link rel="stylesheet" href="/assets/style.css"><script src="/assets/app.js" defer></script>
+  <link rel="stylesheet" href="/assets/style.css"><script src="/assets/activity.js" defer></script><script src="/assets/app.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#question">Skip to question</a>
@@ -28,21 +28,32 @@
         <div class="access-body"><div><label for="access-code">Access code</label><input id="access-code" type="password" autocomplete="off" aria-describedby="access-help" placeholder="Enter your demo code"></div><p id="access-help" class="muted">Required to ask a question. Kept only in this tab, never in your saved history.</p></div>
         <p id="service-status" class="muted" role="status">Checking availability…</p>
       </details>
+      <section id="activity" aria-label="Question in progress" hidden>
+        <div class="pending-head"><div><p class="label">Your question</p><p id="pending-question"></p></div><button id="stop" type="button" aria-label="Stop this question">Stop <span aria-hidden="true">×</span></button></div>
+        <div class="activity-body">
+          <div class="activity-heading"><span class="thinking-loader" aria-hidden="true"><i></i><i></i><i></i></span><h3 id="activity-title" tabindex="-1">Thinking through your question</h3><span class="live-label">Live</span></div>
+          <ol id="activity-stages" aria-label="Investigation stages"><li id="stage-understand">Understand</li><li id="stage-query">Query</li><li id="stage-verify">Verify</li></ol>
+          <ol id="activity-log" role="log" aria-label="Live progress" aria-live="polite" aria-relevant="additions text"></ol>
+          <div class="answer-skeleton" aria-hidden="true"><span></span><span></span></div>
+          <p class="activity-note">The answer appears once its evidence has been checked.</p>
+        </div>
+      </section>
+      <article id="result" aria-label="Question result" tabindex="-1" hidden><p id="result-question" class="question-heading"></p><p id="resolved-question" class="muted"></p><div id="verdict"></div><div id="answer" class="answer"></div><details id="evidence"><summary>Inspect the investigation <span class="muted">Unverified working notes &amp; tool results</span></summary><div id="trace"></div></details></article>
+      <p id="progress" role="status" aria-live="polite"></p>
       <form id="question-form">
         <label for="question">Your question</label>
         <textarea id="question" maxlength="4000" rows="3" placeholder="How many collisions occurred in Orange County in 2019?" aria-describedby="question-help followup-context" required></textarea>
         <div id="question-suggestion" hidden><button id="complete-question" type="button"><span id="completion-text"></span><kbd>Tab</kbd></button><span class="muted">Suggestion · Tab to complete · Esc to dismiss</span></div>
-        <div class="composer-footer"><span id="question-help" class="muted">Tab completes a suggestion · Enter asks · Shift + Enter adds a line</span><button id="send" type="submit">Ask the agent <span aria-hidden="true">↗</span></button><button id="stop" class="secondary-button" type="button" hidden>Stop</button></div>
+        <div class="composer-footer"><span id="question-help" class="muted">Tab completes a suggestion · Enter asks · Shift + Enter adds a line</span><button id="send" type="submit">Ask the agent <span aria-hidden="true">↗</span></button></div>
       </form>
       <p id="followup-context" class="context" hidden></p>
-      <p id="progress" role="status" aria-live="polite"></p>
       <div id="examples"><p class="label">Try a starting point</p><div class="example-grid">
         <button type="button">How many collisions occurred in Orange County in 2019?</button>
         <button type="button">Which county had the most collisions in 2020?</button>
         <button type="button">What percentage of collisions involved a parked vehicle?</button>
         <button type="button">How has COVID-19 changed collisions, if at all?</button>
       </div></div>
-      <article id="result" aria-label="Question result" hidden><p id="result-question" class="question-heading"></p><p id="resolved-question" class="muted"></p><div id="verdict"></div><div id="answer" class="answer"></div><details id="evidence"><summary>Inspect the investigation <span class="muted">Unverified working notes &amp; tool results</span></summary><div id="trace"></div></details></article>
+
     </section>
     <aside class="sidebar" aria-label="About the dataset and your saved questions">
       <section class="guide"><p class="label">Read the result</p><h2>Evidence comes<br> with the answer.</h2><p>Checked answers match the question’s metric, place and time. Open the investigation to inspect the queries.</p><p>A checked limitation means the data or supported queries cannot fully answer your question.</p><div class="followup-tip"><span class="label">Keep exploring</span><p>After an answer, try <strong>“And in 2020?”</strong> or <strong>“What about Orange County?”</strong> The active question will appear below the input.</p></div></section>

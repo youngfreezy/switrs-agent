@@ -24,16 +24,28 @@ function md(src){
 }
 
 const storageKey = 'switrs-questions-v1';
+const activity = createActivity();
 let busy = false, controller = null, history = [], previousReceipt = null;
 try { const saved = JSON.parse(localStorage.getItem(storageKey) || '[]'); if (Array.isArray(saved)) history = saved.slice(0, 50); } catch {}
-function setBusy(value) {
+function setBusy(value, saved = false) {
+  const moveFocus = !value && [$('#activity-title'), $('#stop')].includes(document.activeElement);
   busy = value; $('#send').disabled = value; $('#new').disabled = value; $('#clear').disabled = value;
   $('#stop').hidden = !value; $('#question').readOnly = value;
   $('#question-form').setAttribute('aria-busy', String(value));
+  $('#question-form').hidden = value; $('#access').hidden = value;
+  $('#new').hidden = value; $('#progress').hidden = value;
+  $('#ask-title').textContent = value ? 'Following the evidence' : $('#result').hidden ? 'What would you like to know?' : 'Your result';
+  if (value) {
+    $('#result').hidden = true; activity.start(saved);
+  } else {
+    activity.finish();
+    if (moveFocus) ($('#result').hidden ? $('#question') : $('#result')).focus({preventScroll:true});
+  }
   completion.refresh();
 }
 function resetResult(question) {
-  $('#examples').hidden = true; $('#result').hidden = false;
+  $('#examples').hidden = true; $('#result').hidden = true;
+  $('#pending-question').textContent = question;
   $('#result-question').textContent = question; $('#verdict').replaceChildren();
   $('#resolved-question').textContent = '';
   $('#answer').replaceChildren(); $('#trace').replaceChildren(); $('#evidence').open = false; $('#evidence').hidden = false;
@@ -41,7 +53,7 @@ function resetResult(question) {
 function verdict(text, failure = false, status = 'answered') {
   const limited = !['answered', 'no_matching_records'].includes(status);
   const node = document.createElement('p'); node.className = 'badge' + (failure ? ' failure' : limited ? ' limitation' : '');
-  node.textContent = text; $('#verdict').replaceChildren(node);
+  node.textContent = text; $('#verdict').replaceChildren(node); $('#result').hidden = false;
 }
 function setContext(receipt) {
   if (receipt?.status && !['answered', 'no_matching_records'].includes(receipt.status)) receipt = null;
@@ -79,7 +91,7 @@ function renderHistory() {
     button.onclick = async () => {
       if (busy) return;
       setContext(null); resetResult(record.question); $('#question').value = record.question; $('#progress').textContent = 'Authenticating the saved answer…';
-      setBusy(true); $('#stop').hidden = true; $('#evidence').hidden = true;
+      setBusy(true, true); $('#stop').hidden = true; $('#evidence').hidden = true;
       try {
         const response = await fetch('/api/verify', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(record.receipt), signal:AbortSignal.timeout(15000)});
         const checked = response.ok && (await response.json()).valid === true;
@@ -96,6 +108,7 @@ function renderHistory() {
   });
 }
 function showEvent(event, cards) {
+  activity.event(event);
   if (event.kind === 'status') $('#progress').textContent = event.text;
   else if (event.kind === 'text') {
     const note = document.createElement('p'); note.className = 'working-note'; note.textContent = event.text;
@@ -120,7 +133,7 @@ async function ask(question) {
   }
   $('#access-code').removeAttribute('aria-invalid');
   const previous = previousReceipt;
-  setContext(null); setBusy(true); resetResult(question); $('#progress').textContent = 'Connecting to the agent…';
+  setContext(null); resetResult(question); setBusy(true); $('#progress').textContent = 'Connecting to the agent…';
   controller = new AbortController(); let finalEvent = null; const cards = new Map();
   try {
     const response = await fetch('/api/chat', {method:'POST', signal:controller.signal,
@@ -128,7 +141,7 @@ async function ask(question) {
       body:JSON.stringify({message:question, ...(previous ? {previous} : {})})});
     if (!response.ok) {
       if (response.status === 401) {
-        $('#access').open = true; $('#access-code').setAttribute('aria-invalid', 'true'); $('#access-code').focus();
+        $('#access').hidden = false; $('#access').open = true; $('#access-code').setAttribute('aria-invalid', 'true'); $('#access-code').focus();
       }
       const detail = await response.json().catch(() => ({}));
       throw new Error(typeof detail.detail === 'string' ? detail.detail : 'The request could not start. Please try again.');
@@ -153,7 +166,7 @@ async function ask(question) {
     showResolution(question, finalEvent.receipt);
     verdict(checkedLabel(finalEvent.status), false, finalEvent.status);
     setContext(finalEvent.receipt);
-    $('#progress').textContent = 'Investigation complete. Read the answer and its limitations below.';
+    $('#progress').textContent = '';
     history.unshift({question, receipt:finalEvent.receipt}); history = history.slice(0, 50); saveHistory();
   } catch (error) {
     verdict('No checked answer', true);
@@ -163,7 +176,7 @@ async function ask(question) {
 $('#question-form').onsubmit = event => { event.preventDefault(); const question = $('#question').value.trim(); if (question) ask(question); };
 $('#question').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && !event.ctrlKey && !event.altKey && !event.metaKey) { event.preventDefault(); $('#question-form').requestSubmit(); } });
 $('#stop').onclick = () => controller?.abort();
-$('#new').onclick = () => { if (busy) return; setContext(null); $('#result').hidden = true; $('#examples').hidden = false; $('#question').value = ''; $('#progress').textContent = ''; completion.refresh(); $('#question').focus(); };
+$('#new').onclick = () => { if (busy) return; setContext(null); $('#result').hidden = true; $('#ask-title').textContent = 'What would you like to know?'; $('#examples').hidden = false; $('#question').value = ''; $('#progress').textContent = ''; completion.refresh(); $('#question').focus(); };
 $('#clear').onclick = () => { if (!busy) { history = []; saveHistory(); } };
 document.querySelectorAll('.example-grid button').forEach(button => { button.onclick = () => {
   if (busy) return;
