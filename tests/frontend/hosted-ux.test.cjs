@@ -11,15 +11,16 @@ function setup({chat} = {}) {
     append(...children){this.children.push(...children)}, replaceChildren(...children){this.children=children},
     focus(){this.focused=true;focused=this}, scrollIntoView(){} }; }
   const get = selector => { if(!nodes.has(selector))nodes.set(selector,element());return nodes.get(selector); };
-  const example = element();example.textContent = 'How many collisions in Orange County in 2019?';
-  const calls=[];
-  const context = vm.createContext({document:{get activeElement(){return focused},querySelector:get,querySelectorAll:()=>[example],createElement:element},
+  const example = element();example.textContent = 'How many collisions occurred in Orange County in 2019?';
+  const calls=[], edits=[];
+  const context = vm.createContext({document:{get activeElement(){return focused},execCommand(command,unused,text){edits.push({command,text});focused.value+=text;focused.setSelectionRange(focused.value.length,focused.value.length);return true},querySelector:get,querySelectorAll:()=>[example],createElement:element},
     localStorage:{getItem:()=>null,setItem(){}},AbortController,AbortSignal,TextDecoder,
     fetch:async (url,options)=>{calls.push({url,options});return url==='/api/status'
       ? {json:async()=>({ready:true})} : chat ? chat(options) : {ok:false,status:401,json:async()=>({detail:'Enter the access code to ask a question.'})};}});
   if(fs.existsSync('hosted/static/activity.js'))vm.runInContext(fs.readFileSync('hosted/static/activity.js','utf8'),context);
+  if(fs.existsSync('hosted/static/completion.js'))vm.runInContext(fs.readFileSync('hosted/static/completion.js','utf8'),context);
   vm.runInContext(fs.readFileSync('hosted/static/app.js','utf8'),context);
-  return {get,example,calls,run:code=>vm.runInContext(code,context)};
+  return {get,example,calls,edits,run:code=>vm.runInContext(code,context)};
 }
 test('examples prepare a fresh question without sending or inheriting a prior scope',()=>{
   const ui=setup();ui.run("setContext({status:'answered',question:'How many collisions in 2020?'})");
@@ -54,7 +55,7 @@ test('history has an empty state and an accurate count',()=>{
 });
 
 function typeQuestion(ui, value, cursor=value.length) {
-  const input=ui.get('#question');input.value=value;input.setSelectionRange(cursor,cursor);
+  const input=ui.get('#question');input.focus();input.value=value;input.setSelectionRange(cursor,cursor);
   for(const fn of input.listeners.input || [])fn({});
   for(const fn of input.listeners.focus || [])fn({});
 }
@@ -63,17 +64,15 @@ function key(ui,key,extra={}) {
   for(const fn of ui.get('#question').listeners.keydown || [])fn(event);
   return event;
 }
-test('Tab fills the empty textarea with its visible starter without submitting',()=>{
+test('empty input keeps normal Tab navigation and does not insert an arbitrary question',()=>{
   const ui=setup();typeQuestion(ui,'');
-  assert.equal(ui.get('#question-suggestion').hidden,false);
-  assert.equal(key(ui,'Tab').prevented,true);
-  assert.equal(ui.get('#question').value,ui.example.textContent);
-  assert.equal(ui.calls.some(x=>x.url==='/api/chat'),false);
+  assert.equal(ui.get('#question-suggestion').hidden,true);
   assert.equal(key(ui,'Tab').prevented,false);
+  assert.equal(ui.get('#question').value,'');
 });
 test('completion appends a matching suffix while preserving typed capitalization',()=>{
   const ui=setup();typeQuestion(ui,'how many coll');key(ui,'Tab');
-  assert.equal(ui.get('#question').value,'how many collisions in Orange County in 2019?');
+  assert.equal(ui.get('#question').value,'how many collisions occurred in Orange County in 2019?');
 });
 test('unmatched, selected, middle-of-text, shifted and composing input keep normal Tab behavior',()=>{
   const ui=setup();typeQuestion(ui,'Unknown question');assert.equal(key(ui,'Tab').prevented,false);
@@ -145,4 +144,46 @@ test('focus leaves the disappearing Stop button for the result',()=>{
   const ui=setup();ui.run("resetResult('Question');setBusy(true)");ui.get('#stop').focus();
   ui.run("verdict('No checked answer',true);setBusy(false)");
   assert.equal(ui.run('document.activeElement'),ui.get('#result'));
+});
+
+test('completion is shown only while editing and clears on blur',()=>{
+  const ui=setup();assert.equal(ui.get('#question-suggestion').hidden,true);
+  typeQuestion(ui,'How many');assert.equal(ui.get('#question-suggestion').hidden,false);
+  ui.get('#send').focus();
+  for(const fn of ui.get('#question').listeners.blur || [])fn({});
+  assert.equal(ui.get('#question-suggestion').hidden,true);
+});
+test('completion uses a native editing command for undo and never submits',()=>{
+  const ui=setup();typeQuestion(ui,'How many coll');key(ui,'Tab');
+  assert.deepEqual(ui.edits,[{command:'insertText',text:'isions occurred in Orange County in 2019?'}]);
+  assert.equal(key(ui,'Tab').prevented,false);
+  assert.equal(ui.calls.some(x=>x.url==='/api/chat'),false);
+});
+test('spacing and a shorter common phrasing preserve the typed prefix',()=>{
+  const ui=setup();typeQuestion(ui,'  how  many collisions in');key(ui,'Tab');
+  assert.equal(ui.get('#question').value,'  how  many collisions in Orange County in 2019?');
+});
+
+test('Undo dismisses completion until the next edit and multiline drafts are left alone',()=>{
+  const ui=setup();typeQuestion(ui,'How many coll');key(ui,'Tab');
+  const input=ui.get('#question');input.value='How many coll';input.setSelectionRange(13,13);
+  for(const fn of input.listeners.input)fn({inputType:'historyUndo'});
+  assert.equal(ui.get('#question-suggestion').hidden,true);
+  assert.equal(key(ui,'Tab').prevented,false);
+  typeQuestion(ui,'How many colli');assert.equal(ui.get('#question-suggestion').hidden,false);
+  typeQuestion(ui,'How many\ncollisions');assert.equal(key(ui,'Tab').prevented,false);
+});
+test('IME composition and unsupported native editing never replace the draft',()=>{
+  const ui=setup();typeQuestion(ui,'How many coll');
+  for(const fn of ui.get('#question').listeners.compositionstart)fn({});
+  assert.equal(key(ui,'Tab').prevented,false);
+  for(const fn of ui.get('#question').listeners.compositionend)fn({});
+  ui.run('document.execCommand = () => false');
+  assert.equal(key(ui,'Tab').prevented,false);
+  assert.equal(ui.get('#question').value,'How many coll');
+});
+test('regex punctuation is treated as literal question text',()=>{
+  const ui=setup();typeQuestion(ui,'How.*');
+  assert.equal(key(ui,'Tab').prevented,false);
+  assert.equal(ui.get('#question').value,'How.*');
 });

@@ -105,3 +105,10 @@ def test_loading_script_is_served_under_the_existing_security_policy():
     assert 'function createActivity' in response.text
     assert "script-src 'self'" in response.headers['content-security-policy']
     assert client().get('/assets/unknown.js').status_code == 404
+
+
+def test_completion_script_is_served_under_the_existing_security_policy():
+    response = client().get('/assets/completion.js')
+    assert response.status_code == 200
+    assert 'function setupCompletion' in response.text
+    assert "script-src 'self'" in response.headers['content-security-policy']

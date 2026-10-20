@@ -185,46 +185,6 @@ document.querySelectorAll('.example-grid button').forEach(button => { button.onc
   completion.refresh();
 }; });
 $('#access-code').addEventListener('input', () => $('#access-code').removeAttribute('aria-invalid'));
-// Suggestions are question text only. Accepting one never calls the agent.
-function setupCompletion() {
-  const input = $('#question'), panel = $('#question-suggestion'), button = $('#complete-question');
-  const starters = [...document.querySelectorAll('.example-grid button')].map(node => node.textContent.trim());
-  let dismissedValue = null, composing = false;
-  function candidate() {
-    if (busy || composing || dismissedValue === input.value ||
-        input.selectionStart !== input.value.length || input.selectionEnd !== input.value.length) return '';
-    const options = previousReceipt ? [...starters, 'And in 2020?', 'What about Orange County?'] : starters;
-    const match = options.find(text => text.length > input.value.length && text.toLowerCase().startsWith(input.value.toLowerCase()));
-    return match ? input.value + match.slice(input.value.length) : '';
-  }
-  function refresh() {
-    const text = candidate();
-    panel.hidden = !text;
-    $('#completion-text').textContent = text;
-    button.setAttribute('aria-label', 'Complete question: ' + text);
-  }
-  function accept() {
-    const text = candidate();
-    if (!text || panel.hidden) return false;
-    input.value = text;
-    input.setSelectionRange(text.length, text.length);
-    refresh(); input.focus();
-    return true;
-  }
-  input.addEventListener('input', () => { if (dismissedValue !== input.value) dismissedValue = null; refresh(); });
-  for (const type of ['focus', 'click', 'keyup', 'select']) input.addEventListener(type, refresh);
-  input.addEventListener('compositionstart', () => { composing = true; refresh(); });
-  input.addEventListener('compositionend', () => { composing = false; refresh(); });
-  input.addEventListener('keydown', event => {
-    if (event.isComposing || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
-    if (event.key === 'Escape' && !panel.hidden) {
-      dismissedValue = input.value; refresh(); event.preventDefault();
-    } else if (event.key === 'Tab' && accept()) event.preventDefault();
-  });
-  button.onclick = accept;
-  refresh();
-  return {refresh};
-}
 const completion = setupCompletion();
 renderHistory();
 fetch('/api/status').then(response => response.json()).then(status => {

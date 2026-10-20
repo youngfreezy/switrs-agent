@@ -70,7 +70,7 @@ def create_app(*, agent_factory=make_agent, access_key=None, signing_key=None):
 
     @app.get('/assets/{name}')
     def asset(name: str):
-        if name not in {'app.js', 'activity.js', 'style.css'}:
+        if name not in {'app.js', 'activity.js', 'completion.js', 'style.css'}:
             raise HTTPException(404)
         return FileResponse(ROOT / 'hosted/static' / name)
 

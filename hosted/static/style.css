@@ -61,13 +61,20 @@ input { width: 100%; padding: 10px 12px; min-height: 44px; border: 1px solid #78
 #question-form { border: 1px solid #787c87; border-radius: 10px; background: var(--white); padding: 18px; }
 textarea { display: block; resize: vertical; width: 100%; min-height: 108px; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); line-height: 1.6; }
 textarea::placeholder { color: var(--muted); }
-textarea:focus-visible { outline-offset: 3px; }
-#question-suggestion { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
-#complete-question { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 6px; background: #e3f0e8; color: #17543a; text-align: left; font-size: 13px; line-height: 1.5; }
-#completion-text { overflow-wrap: anywhere; }
-#complete-question kbd { flex-shrink: 0; border: 1px solid #698574; border-radius: 3px; padding: 1px 5px; font-size: 11px; }
-#question-suggestion > .muted { display: block; margin-top: 6px; font-size: 11px; }
-.composer-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; }
+textarea:focus-visible { outline: none; }
+#question-form:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgb(31 107 69 / .08); }
+.question-editor { position: relative; }
+.question-editor textarea, #question-ghost { font: inherit; line-height: 1.6; letter-spacing: normal; white-space: pre-wrap; overflow-wrap: break-word; }
+.question-editor textarea { position: relative; z-index: 1; }
+#question-ghost { position: absolute; inset: 0; overflow: hidden; pointer-events: none; color: #697386; }
+#completion-prefix { color: transparent; }
+.completion-slot { height: 44px; margin-top: 4px; }
+#question-suggestion { display: flex; align-items: center; gap: 12px; height: 44px; color: var(--muted); font-size: 11px; }
+#complete-question { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--accent); font-size: 11px; }
+#complete-question:hover { color: var(--ink); }
+#complete-question kbd { border: 1px solid var(--line); background: var(--paper); border-radius: 4px; padding: 0 5px; font-size: 11px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.composer-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px; }
 .composer-footer .muted { font-size: 11px; }
 #send, .secondary-button { min-height: 46px; padding: 11px 18px; border: 1px solid var(--ink); border-radius: 6px; background: var(--ink); color: var(--paper); font-size: 13px; white-space: nowrap; }
 #send span { margin-left: 16px; }
