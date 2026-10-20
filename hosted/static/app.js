@@ -29,6 +29,7 @@ try { const saved = JSON.parse(localStorage.getItem(storageKey) || '[]'); if (Ar
 function setBusy(value) {
   busy = value; $('#send').disabled = value; $('#new').disabled = value; $('#clear').disabled = value;
   $('#stop').hidden = !value; $('#question').readOnly = value;
+  $('#question-form').setAttribute('aria-busy', String(value));
 }
 function resetResult(question) {
   $('#examples').hidden = true; $('#result').hidden = false;
@@ -36,16 +37,18 @@ function resetResult(question) {
   $('#resolved-question').textContent = '';
   $('#answer').replaceChildren(); $('#trace').replaceChildren(); $('#evidence').open = false; $('#evidence').hidden = false;
 }
-function verdict(text, failure = false) {
-  const node = document.createElement('p'); node.className = 'badge' + (failure ? ' failure' : '');
+function verdict(text, failure = false, status = 'answered') {
+  const limited = !['answered', 'no_matching_records'].includes(status);
+  const node = document.createElement('p'); node.className = 'badge' + (failure ? ' failure' : limited ? ' limitation' : '');
   node.textContent = text; $('#verdict').replaceChildren(node);
 }
 function setContext(receipt) {
   if (receipt?.status && !['answered', 'no_matching_records'].includes(receipt.status)) receipt = null;
   previousReceipt = receipt;
+  $('#followup-context').hidden = !receipt;
   $('#followup-context').textContent = receipt
-    ? 'Follow-ups refer to: ' + (receipt.resolved_question || receipt.question)
-    : 'Ask a complete question. After an answer, you can change its year or county.';
+    ? 'Follow-ups refer to: ' + (receipt.resolved_question || receipt.question) + ' Try “And in 2020?” or change the county.'
+    : '';
 }
 function showResolution(question, receipt) {
   $('#resolved-question').textContent = receipt.resolved_question && receipt.resolved_question !== question
@@ -62,8 +65,14 @@ function saveHistory() {
 }
 function renderHistory() {
   $('#history').replaceChildren();
-  history.forEach(record => {
-    if (!record || typeof record.question !== 'string') return;
+  const records = history.filter(record => record && typeof record.question === 'string');
+  $('#history-count').textContent = records.length + ' saved';
+  if (!records.length) {
+    const empty = document.createElement('p'); empty.className = 'muted';
+    empty.textContent = 'No saved questions yet. Your checked results will appear here.';
+    $('#history').append(empty);
+  }
+  records.forEach(record => {
     const button = document.createElement('button'); button.type = 'button'; button.textContent = record.question;
     button.onclick = async () => {
       if (busy) return;
@@ -75,7 +84,7 @@ function renderHistory() {
         if (!checked || record.receipt.question !== record.question) throw new Error('Saved answer could not be authenticated. Ask the question again.');
         $('#answer').innerHTML = md(record.receipt.answer);
         showResolution(record.question, record.receipt);
-        verdict(record.receipt.status ? 'Saved · ' + checkedLabel(record.receipt.status) : 'Authenticated saved answer · checked when originally produced');
+        verdict(record.receipt.status ? 'Saved · ' + checkedLabel(record.receipt.status) : 'Authenticated saved answer · checked when originally produced', false, record.receipt.status || 'answered');
         setContext(record.receipt);
         $('#progress').textContent = 'Saved answer. Run the question again for a new investigation.';
       } catch (error) { verdict('Saved answer is unverified', true); $('#progress').textContent = error.message; }
@@ -93,7 +102,7 @@ function showEvent(event, cards) {
     const card = document.createElement('details'), title = document.createElement('summary'), input = document.createElement('pre');
     title.textContent = event.tool; input.textContent = JSON.stringify(event.input, null, 2);
     card.append(title, input); cards.set(event.id, card); $('#trace').append(card);
-    $('#progress').textContent = 'Investigating · ' + event.tool.replaceAll('_', ' ');
+    $('#progress').textContent = 'Checking the question, querying the records and verifying the result…';
   } else if (event.kind === 'tool_result') {
     const output = document.createElement('pre'); output.textContent = JSON.stringify(event.result, null, 2);
     (cards.get(event.id) || $('#trace')).append(output);
@@ -107,6 +116,7 @@ async function ask(question) {
     $('#access').open = true; $('#access-code').focus();
     $('#progress').textContent = 'Enter the private access code under Agent access, then ask again.'; return;
   }
+  $('#access-code').removeAttribute('aria-invalid');
   const previous = previousReceipt;
   setContext(null); setBusy(true); resetResult(question); $('#progress').textContent = 'Connecting to the agent…';
   controller = new AbortController(); let finalEvent = null; const cards = new Map();
@@ -115,9 +125,13 @@ async function ask(question) {
       headers:{'Content-Type':'application/json', Authorization:'Bearer ' + $('#access-code').value.trim()},
       body:JSON.stringify({message:question, ...(previous ? {previous} : {})})});
     if (!response.ok) {
+      if (response.status === 401) {
+        $('#access').open = true; $('#access-code').setAttribute('aria-invalid', 'true'); $('#access-code').focus();
+      }
       const detail = await response.json().catch(() => ({}));
       throw new Error(typeof detail.detail === 'string' ? detail.detail : 'The request could not start. Please try again.');
     }
+    $('#access').open = false;
     const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = '';
     while (true) {
       const {value, done} = await reader.read(); if (done) break;
@@ -135,7 +149,7 @@ async function ask(question) {
     if (finalEvent?.kind !== 'certified' || !finalEvent.receipt) throw new Error('No answer passed verification in this turn. The investigation notes remain unverified.');
     $('#answer').innerHTML = md(finalEvent.final_answer);
     showResolution(question, finalEvent.receipt);
-    verdict(checkedLabel(finalEvent.status));
+    verdict(checkedLabel(finalEvent.status), false, finalEvent.status);
     setContext(finalEvent.receipt);
     $('#progress').textContent = 'Investigation complete. Read the answer and its limitations below.';
     history.unshift({question, receipt:finalEvent.receipt}); history = history.slice(0, 50); saveHistory();
@@ -149,7 +163,12 @@ $('#question').addEventListener('keydown', event => { if (event.key === 'Enter' 
 $('#stop').onclick = () => controller?.abort();
 $('#new').onclick = () => { if (busy) return; setContext(null); $('#result').hidden = true; $('#examples').hidden = false; $('#question').value = ''; $('#progress').textContent = ''; $('#question').focus(); };
 $('#clear').onclick = () => { if (!busy) { history = []; saveHistory(); } };
-document.querySelectorAll('.example-grid button').forEach(button => { button.onclick = () => { if (!busy) { $('#question').value = button.textContent; ask(button.textContent); } }; });
+document.querySelectorAll('.example-grid button').forEach(button => { button.onclick = () => {
+  if (busy) return;
+  $('#new').onclick();
+  $('#question').value = button.textContent;
+}; });
+$('#access-code').addEventListener('input', () => $('#access-code').removeAttribute('aria-invalid'));
 renderHistory();
 fetch('/api/status').then(response => response.json()).then(status => {
   $('#service-status').textContent = status.ready ? 'Hosted agent configured. Your code is required to run it.' : 'The hosted agent is being configured.';
