@@ -16,6 +16,8 @@ The model has up to eight turns and 4,096 output tokens per turn. A request has 
 
 The full, reconciled 1.26 GB DuckDB snapshot is compressed in a private Vercel Blob store. The build downloads and expands it, verifies its exact size and SHA-256 against `hosted/dataset_meta.json`, then packages it with the Python function. The runtime verifies the file again before answering. It never downloads or trusts arbitrary model-selected data.
 
+Interrupted transfers, HTTP 429, and server errors get at most three attempts. Each attempt starts from byte zero and must pass the same integrity checks. Digest mismatches and permanent HTTP failures stop immediately. Failed attempts remove their temporary file and cannot replace the previous verified copy or publish a new deployment.
+
 This requires Vercel Fluid compute and large-function support (`VERCEL_SUPPORT_LARGE_FUNCTIONS=1`). No metrics were replaced with cached answers or aggregates. Python deployments and their timestamps may change; the content hash remains authoritative.
 
 The uploaded archive is 579 MB. Building and deploying consumes Blob storage/transfer and Vercel function resources. The database is not committed to Git. Local data is excluded from CLI source uploads; the build retrieves the pinned archive.

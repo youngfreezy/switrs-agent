@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Retry interrupted build-time snapshot downloads up to three times, starting over and retaining full size/digest validation. Content mismatches and permanent HTTP failures still stop deployment.
+
 - Use limitation wording in the shared answer footer as well as the hosted badge; clear active follow-up context after a limitation.
 
 - Resolve explicit year/county follow-ups from authenticated prior question scopes, preserving all other filters and displaying the resolved question. Distinguish checked limitations from numerical answers in the hosted UI.

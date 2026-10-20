@@ -3,7 +3,10 @@ import gzip
 import hashlib
 import json
 import os
+import time
+from http.client import IncompleteRead
 from pathlib import Path
+import urllib.error
 import urllib.request
 from urllib.parse import urlparse
 
@@ -37,8 +40,19 @@ def main():
     (ROOT / 'data').mkdir(exist_ok=True)
     request = urllib.request.Request(url, headers={
         'Authorization': 'Bearer ' + os.environ['BLOB_READ_WRITE_TOKEN']})
-    with urllib.request.urlopen(request, timeout=240) as source:
-        unpack_verified(source, ROOT / 'data/switrs.duckdb', manifest['duckdb_file'])
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=240) as source:
+                unpack_verified(source, ROOT / 'data/switrs.duckdb', manifest['duckdb_file'])
+            break
+        except (EOFError, IncompleteRead, TimeoutError, ConnectionError, urllib.error.URLError) as exc:
+            if isinstance(exc, urllib.error.HTTPError) and exc.code < 500 and exc.code != 429:
+                raise
+            if attempt == 2:
+                raise
+            # Restart the stream. Never resume a partial gzip or bypass its content checks.
+            print(f'Dataset transfer interrupted; retrying ({attempt + 2}/3).', flush=True)
+            time.sleep(2 ** attempt)
     (ROOT / 'data/dataset_meta.json').write_text(json.dumps(manifest))
     print('Installed verified dataset:', manifest['dataset_version'], manifest['duckdb_file']['sha256'])
 
